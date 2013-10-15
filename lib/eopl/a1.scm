@@ -1,11 +1,13 @@
 (library
   (eopl a1)
-  (export a1)
+  (export a1
+          binary->natural-fr)
 
   (import (rnrs)
           (rnrs r5rs)
           (elegant-weapons compat)
-          (elegant-weapons tester))
+          (elegant-weapons tester)
+          (stream))
 
   (define countdown
     (lambda (n)
@@ -130,6 +132,81 @@
         (cons (remainder n 2)
               (natural->binary (quotient n 2))))))
 
+  (define insertR-fr
+    (lambda (old new lat)
+      (fold-right (lambda (atom accum)
+                    (if (eq? old atom)
+                      (cons atom
+                            (cons new accum))
+                      (cons atom accum)))
+                  '()
+                  lat)))
+
+  (define occurs-s-num-fr
+    (lambda (sym lat)
+      (fold-right (lambda (atom accum)
+                    (if (eq? sym atom)
+                      (add1 accum)
+                      accum))
+                  0
+                  lat)))
+
+  (define occurs-?s-fr
+    (lambda (lat)
+      (occurs-s-num-fr '? lat)))
+
+  (define filter-fr
+    (lambda (predicate lst)
+      (fold-right (lambda (exp accum)
+                    (if (predicate exp)
+                      (cons exp accum)
+                      accum))
+                  '()
+                  lst)))
+
+  (define zip-fr
+    (lambda (lst1 lst2)
+      (fold-right (lambda (atom1 atom2 accum)
+                    (cons (cons atom1 atom2)
+                          accum))
+                  '()
+                  lst1
+                  lst2)))
+
+
+  (define map-fr
+    (lambda (proc lst)
+      (fold-right (lambda (exp accum)
+                    (cons (proc exp) accum))
+                  '()
+                  lst)))
+
+  (define append-fr
+    (lambda (lst1 lst2)
+      (fold-right (lambda (exp accum)
+                    (cons exp accum))
+                  lst2
+                  lst1)))
+
+  ; I think it's better to use fold-left here
+  (define reverse-fr
+    (lambda (lst)
+      (fold-left (lambda (accum exp)
+                   (cons exp accum))
+                  '()
+                  lst)))
+
+  (define binary->natural-fr
+    (lambda (binary-digits-rev)
+      (fold-left (lambda (accum digit multiplier)
+                   (if (= digit 0)
+                     accum
+                     (+ accum multiplier)))
+                 0
+                 binary-digits-rev
+                 (take (length binary-digits-rev)
+                       (geometric-series 1 2)))))
+
   (define-test-suite
     a1
     (basic
@@ -163,5 +240,18 @@
         (or (equal? (natural->binary 15) '(1 1 1 1)) (fail))
         (or (equal? (natural->binary 21) '(1 0 1 0 1)) (fail))
         (or (equal? (natural->binary 8191) '(1 1 1 1 1 1 1 1 1 1 1 1 1)) (fail))
+        (or (equal? (insertR-fr 'x 'y '(x z z x y x)) '(x y z z x y y x y)) (fail))
+        (or (equal? (occurs-?s-fr '(? y z ? ?)) 3) (fail))
+        (or (equal? (zip-fr '(1 2 3) '(a b c)) '((1 . a) (2 . b) (3 . c))) (fail))
+        (or (equal? (filter-fr even? '(1 2 3 4 5 6)) '(2 4 6)) (fail))
+        (or (equal? (map-fr add1 '(1 2 3 4)) '(2 3 4 5)) (fail))
+        (or (equal? (append-fr '(a b c) '(1 2 3)) '(a b c 1 2 3)) (fail))
+        (or (equal? (reverse-fr '(a 3 x)) '(x 3 a)) (fail))
+        (or (equal? (binary->natural-fr '()) 0) (fail))
+        (or (equal? (binary->natural-fr '(0 0 1)) 4) (fail))
+        (or (equal? (binary->natural-fr '(0 0 1 1)) 12) (fail))
+        (or (equal? (binary->natural-fr '(1 1 1 1)) 15) (fail))
+        (or (equal? (binary->natural-fr '(1 0 1 0 1)) 21) (fail))
+        (or (equal? (binary->natural-fr '(1 1 1 1 1 1 1 1 1 1 1 1 1)) 8191) (fail))
         )))
   )
