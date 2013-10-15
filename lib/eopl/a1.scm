@@ -84,6 +84,15 @@
     (lambda (lst)
       (member* '? lst)))
 
+  (define fib
+    (lambda (n)
+      (let loop ((a 0)
+                 (b 1)
+                 (i 0))
+        (if (= i n)
+          a
+          (loop b (+ a b) (add1 i))))))
+
   (define-test-suite
     a1
     (basic
@@ -97,5 +106,8 @@
         (or (equal? (member-?* '(a b c)) #f) (fail))
         (or (equal? (member-?* '(a ? c)) #t) (fail))
         (or (equal? (member-?* '((a ((?)) ((c) b c)))) #t) (fail))
+        (or (equal? (fib 0) 0) (fail))
+        (or (equal? (fib 1) 1) (fail))
+        (or (equal? (fib 7) 13) (fail))
         )))
   )
