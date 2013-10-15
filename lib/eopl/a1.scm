@@ -207,6 +207,14 @@
                  (take (length binary-digits-rev)
                        (geometric-series 1 2)))))
 
+  (define fact
+    (lambda (n)
+      (define (fact-acc n accum)
+        (if (= n 0)
+          accum
+          (fact-acc (sub1 n) (* n accum))))
+      (fact-acc n 1)))
+
   (define-test-suite
     a1
     (basic
@@ -253,5 +261,6 @@
         (or (equal? (binary->natural-fr '(1 1 1 1)) 15) (fail))
         (or (equal? (binary->natural-fr '(1 0 1 0 1)) 21) (fail))
         (or (equal? (binary->natural-fr '(1 1 1 1 1 1 1 1 1 1 1 1 1)) 8191) (fail))
+        (or (equal? (fact 5) 120) (fail))
         )))
   )
