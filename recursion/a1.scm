@@ -1,5 +1,5 @@
 (import (rnrs)
-        (compat))
+        (elegant-weapons compat))
 
 (define countdown
   (lambda (n)
