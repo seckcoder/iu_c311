@@ -3,6 +3,7 @@
   (export a1)
 
   (import (rnrs)
+          (rnrs r5rs)
           (elegant-weapons compat)
           (elegant-weapons tester))
 
@@ -93,12 +94,48 @@
           a
           (loop b (+ a b) (add1 i))))))
 
+  (define cons-cell-count
+    (lambda (exp)
+      (cond ((null? exp) 0)
+            ((atom? exp) 0)
+            (else
+              (add1 (+ (cons-cell-count (car exp))
+                       (cons-cell-count (cdr exp))))))))
+
+  ; 14. ((w x) y (z)) -> ((w x) . (y (z))) -> ((w . (x)) . (y . ((z)))) -> ((w . (x . ())) . (y . ((z) . ()))) -> ((w . (x . ())) . (y . ((z . ()) . ())))
+
+  (define a1-14
+    (equal? '((w x) y (z))
+            '((w . (x . ())) . (y . ((z . ()) . ())))))
+
+  (define binary->natural
+    (lambda (binary-digits-rev)
+      (let loop ((rest-digits binary-digits-rev)
+                 (accum 0)
+                 (digit-multiplier 1))
+        (if (null? rest-digits)
+          accum
+          (if (= (car rest-digits) 0)
+            (loop (cdr rest-digits)
+                  accum
+                  (* 2 digit-multiplier))
+            (loop (cdr rest-digits)
+                  (+ accum digit-multiplier)
+                  (* 2 digit-multiplier)))))))
+
+  (define natural->binary
+    (lambda (n)
+      (if (= n 0)
+        '()
+        (cons (remainder n 2)
+              (natural->binary (quotient n 2))))))
+
   (define-test-suite
     a1
     (basic
       (lambda (fail)
         (or (equal? (countdown 5) '(5 4 3 2 1 0)) (fail))
-        (or (equal? (insertR 'x 'y '(x z z x y x))) (fail))
+        (or (equal? (insertR 'x 'y '(x z z x y x)) '(x y z z x y y x y)) (fail))
         (or (equal? (remv-lst 'x '(x y z x)) '(y z x)) (fail))
         (or (equal? (remv-lst 'y '(x y z y x)) '(x z y x)) (fail))
         (or (equal? (occurs-?s '(? y z ? ?)) 3) (fail))
@@ -109,5 +146,22 @@
         (or (equal? (fib 0) 0) (fail))
         (or (equal? (fib 1) 1) (fail))
         (or (equal? (fib 7) 13) (fail))
+        (or (equal? (cons-cell-count 'a) 0) (fail))
+        (or (equal? (cons-cell-count '(3 . 4)) 1) (fail))
+        (or (equal? (cons-cell-count '(a b . c)) 2) (fail))
+        (or (equal? (cons-cell-count '((a b . c) 3 . 4)) 4) (fail))
+        (or (equal? a1-14 #t) (fail))
+        (or (equal? (binary->natural '()) 0) (fail))
+        (or (equal? (binary->natural '(0 0 1)) 4) (fail))
+        (or (equal? (binary->natural '(0 0 1 1)) 12) (fail))
+        (or (equal? (binary->natural '(1 1 1 1)) 15) (fail))
+        (or (equal? (binary->natural '(1 0 1 0 1)) 21) (fail))
+        (or (equal? (binary->natural '(1 1 1 1 1 1 1 1 1 1 1 1 1)) 8191) (fail))
+        (or (equal? (natural->binary 0) '()) (fail))
+        (or (equal? (natural->binary 4) '(0 0 1)) (fail))
+        (or (equal? (natural->binary 12) '(0 0 1 1)) (fail))
+        (or (equal? (natural->binary 15) '(1 1 1 1)) (fail))
+        (or (equal? (natural->binary 21) '(1 0 1 0 1)) (fail))
+        (or (equal? (natural->binary 8191) '(1 1 1 1 1 1 1 1 1 1 1 1 1)) (fail))
         )))
   )
