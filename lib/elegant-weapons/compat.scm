@@ -1,6 +1,6 @@
 (library
     (elegant-weapons compat)
-  (export add1 sub1 syntax-error make-parameter parameterize
+  (export add1 sub1 atom? syntax-error make-parameter parameterize
     last-pair make-list void)
   (import (rnrs))
   
@@ -11,6 +11,8 @@
   
   (define (add1 x) (+ x 1))
   (define (sub1 x) (- x 1))
+  (define (atom? s) (and (not (pair? s))
+                         (not (null? s))))
   
   (define syntax-error error)
 

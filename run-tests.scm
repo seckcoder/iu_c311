@@ -5,7 +5,8 @@
 
   (elegant-weapons helpers-tests)
   (elegant-weapons sets-tests)
-  (elegant-weapons record-case-tests))
+  (elegant-weapons record-case-tests)
+  (eopl a1))
 
 (define (print-parse-roundtrip e)
   (display "Round trip testing for...\n")
@@ -25,7 +26,6 @@
                  "Parser round trip test failed."))))))
 
 (define (parse-roundtrip e error)
-  (display error)
   (let ((s (format-c e)))
     (let ((tokens (tokenize-string s)))
       (let ((parsed (parse-c tokens)))
@@ -46,4 +46,4 @@
                                   (return (var x))))
                           error))))
 
-(run-tests basic helpers sets record-case-tests)
+(run-tests basic helpers sets record-case-tests a1)
