@@ -1,0 +1,12 @@
+#!/bin/bash
+
+SCHEME=${SCHEME:-guile}
+
+case $SCHEME in
+    guile)
+        $SCHEME -L lib run-tests.scm
+        ;;
+    petite)
+        $SCHEME --libdirs lib --script run-tests.scm
+        ;;
+esac
