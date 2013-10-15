@@ -25,6 +25,7 @@
                  "Parser round trip test failed."))))))
 
 (define (parse-roundtrip e error)
+  (display error)
   (let ((s (format-c e)))
     (let ((tokens (tokenize-string s)))
       (let ((parsed (parse-c tokens)))
