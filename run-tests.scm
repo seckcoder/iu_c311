@@ -6,7 +6,7 @@
   (elegant-weapons helpers-tests)
   (elegant-weapons sets-tests)
   (elegant-weapons record-case-tests)
-  (eopl a1))
+  (c311 a1))
 
 (define (print-parse-roundtrip e)
   (display "Round trip testing for...\n")

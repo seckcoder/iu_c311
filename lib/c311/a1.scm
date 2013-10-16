@@ -1,7 +1,7 @@
 (library
-  (eopl a1)
+  (c311 a1)
   (export a1
-          collatz
+          quine-demo
           ) 
 
   (import (rnrs)
@@ -196,8 +196,8 @@
     (lambda (lst)
       (fold-left (lambda (accum exp)
                    (cons exp accum))
-                  '()
-                  lst)))
+                 '()
+                 lst)))
 
   (define binary->natural-fr
     (lambda (binary-digits-rev)
@@ -237,7 +237,7 @@
       (if (< a b)
         0
         (add1 (mdiv (sub a b)
-                   b)))))
+                    b)))))
 
   (define base
     (lambda (x)
@@ -265,6 +265,14 @@
           (else (recur x))))))
 
   (define collatz (one-case (odd-case (even-case base))))
+
+  (define quine-demo
+    ((lambda (x)
+       (list x (list 'quote x)))
+     '(lambda (x)
+        (list x (list 'quote x)))))
+
+  ; http://www.madore.org/~david/computers/quine.html
 
   (define-test-suite
     a1
