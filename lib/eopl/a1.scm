@@ -1,13 +1,14 @@
 (library
   (eopl a1)
-  (export a1
-          binary->natural-fr)
+  (export a1) 
 
   (import (rnrs)
           (rnrs r5rs)
           (elegant-weapons compat)
           (elegant-weapons tester)
-          (stream))
+          (stream)
+          (utils)
+          )
 
   (define countdown
     (lambda (n)
@@ -215,6 +216,13 @@
           (fact-acc (sub1 n) (* n accum))))
       (fact-acc n 1)))
 
+  (define power
+    (lambda (x n)
+      (cond ((= n 0) 1)
+            ((odd? n) (* x (power x (sub1 n))))
+            (else
+              (square (power x (/ n 2)))))))
+
   (define-test-suite
     a1
     (basic
@@ -262,5 +270,11 @@
         (or (equal? (binary->natural-fr '(1 0 1 0 1)) 21) (fail))
         (or (equal? (binary->natural-fr '(1 1 1 1 1 1 1 1 1 1 1 1 1)) 8191) (fail))
         (or (equal? (fact 5) 120) (fail))
+        (or (equal? (power 2 0) 1) (fail))
+        (or (equal? (power 2 2) 4) (fail))
+        (or (equal? (power 2 10) 1024) (fail))
+        (or (equal? (power 10 5) 100000) (fail))
+        (or (equal? (power 3 31) 617673396283947) (fail))
+        (or (equal? (power 3 32) 1853020188851841) (fail))
         )))
   )
