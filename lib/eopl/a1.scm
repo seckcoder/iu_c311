@@ -223,6 +223,20 @@
             (else
               (square (power x (/ n 2)))))))
 
+  (define sub
+    (lambda (a b)
+      (if (= b 0)
+        a
+        (sub (sub1 a)
+             (sub1 b)))))
+
+  (define mdiv
+    (lambda (a b)
+      (if (< a b)
+        0
+        (add1 (mdiv (sub a b)
+                   b)))))
+
   (define-test-suite
     a1
     (basic
@@ -276,5 +290,9 @@
         (or (equal? (power 10 5) 100000) (fail))
         (or (equal? (power 3 31) 617673396283947) (fail))
         (or (equal? (power 3 32) 1853020188851841) (fail))
+        (or (equal? (sub 5 3) 2) (fail))
+        (or (equal? (sub 100 50) 50) (fail))
+        (or (equal? (mdiv 25 5) 5) (fail))
+        (or (equal? (mdiv 27 5) 5) (fail))
         )))
   )
