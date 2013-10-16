@@ -1,6 +1,8 @@
 (library
   (eopl a1)
-  (export a1) 
+  (export a1
+          collatz
+          ) 
 
   (import (rnrs)
           (rnrs r5rs)
@@ -237,6 +239,33 @@
         (add1 (mdiv (sub a b)
                    b)))))
 
+  (define base
+    (lambda (x)
+      (error 'error "Invalid value ~s~n" x)))
+
+  (define odd-case
+    (lambda (recur)
+      (lambda (x)
+        (cond
+          ((odd? x) (collatz (add1 (* x 3))))
+          (else (recur x))))))
+
+  (define even-case
+    (lambda (recur)
+      (lambda (x)
+        (cond
+          ((even? x) (collatz (/ x 2)))
+          (else (recur x))))))
+
+  (define one-case
+    (lambda (recur)
+      (lambda (x)
+        (cond
+          ((zero? (sub1 x)) 1)
+          (else (recur x))))))
+
+  (define collatz (one-case (odd-case (even-case base))))
+
   (define-test-suite
     a1
     (basic
@@ -294,5 +323,8 @@
         (or (equal? (sub 100 50) 50) (fail))
         (or (equal? (mdiv 25 5) 5) (fail))
         (or (equal? (mdiv 27 5) 5) (fail))
+        (or (equal? (collatz 12) 1) (fail))
+        (or (equal? (collatz 120) 1) (fail))
+        (or (equal? (collatz 9999) 1) (fail))
         )))
   )
