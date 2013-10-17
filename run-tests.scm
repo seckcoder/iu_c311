@@ -6,7 +6,10 @@
   (elegant-weapons helpers-tests)
   (elegant-weapons sets-tests)
   (elegant-weapons record-case-tests)
-  (c311 a1))
+  (c311 a1)
+  (eopl c1)
+  (eopl c2)
+  )
 
 (define (print-parse-roundtrip e)
   (display "Round trip testing for...\n")
@@ -46,4 +49,4 @@
                                   (return (var x))))
                           error))))
 
-(run-tests basic helpers sets record-case-tests a1)
+(run-tests basic helpers sets record-case-tests a1 eopl-c1 eopl-c2)

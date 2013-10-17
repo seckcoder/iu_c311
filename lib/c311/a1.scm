@@ -1,7 +1,7 @@
 (library
   (c311 a1)
   (export a1
-          quine-demo
+          fact
           ) 
 
   (import (rnrs)
