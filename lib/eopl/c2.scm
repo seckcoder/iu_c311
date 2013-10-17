@@ -152,6 +152,176 @@
           (loop (bignum/mul n accum)
                 (bignum/predecessor n))))))
 
+  ; 2.2
+  ; I'm not sure what's the usage of unary representation.
+  ; For the scheme number representation, this is more efficient
+  ; when used for add/subtract(mathematical operation).
+  ; For the bignum representation, it saves space when used to store bignum.
+  ;
+
+  ; 2.3
+  ; 2.3.1. every number: n = n + 0 = diff(n, 0). 0 has infinitely many
+  ; representations in the system
+
+  ; 2.3.2
+
+  (define difftree-one '(one))
+  (define difftree-is-one?
+    (lambda (t)
+      (eq? t difftree-one)))
+  (define difftree-left cadr)
+  (define difftree-right caddr)
+  (define difftree-diff
+    (lambda (left right)
+      (list 'diff left right)))
+
+  (define difftree/zero
+    (lambda ()
+      (difftree-diff difftree-one difftree-one)))
+
+  (define difftree/one
+    (lambda ()
+      difftree-one))
+  (define difftree/-one
+    (lambda ()
+      (difftree-diff (difftree/zero) (difftree/one))))
+
+  (define difftree/is-zero?
+    (lambda (n)
+      (= (difftree->natural n) 0)))
+
+  (define difftree/predecessor
+    (lambda (n)
+      (difftree-diff n (difftree/one))))
+
+  (define difftree/successor
+    (lambda (n)
+      (difftree-diff n (difftree/-one))))
+
+  (define difftree->natural
+    (lambda (n)
+      (if (difftree-is-one? n)
+        1
+        (- (difftree->natural (difftree-left n))
+           (difftree->natural (difftree-right n))))))
+
+  ; 2.3.3
+  ; TODO(liwei): I'm not sure what optimized means.
+
+  (define empty-env
+    (lambda () (list 'empty-env)))
+
+  (define extend-env
+    (lambda (var val env)
+      (list 'extend-env var val env)))
+
+  (define extend-env?
+    (lambda (env)
+      (eq? (car env) 'extend-env)))
+
+  (define apply-env
+    (lambda (env search-var)
+      (cond
+        ((empty-env? env)
+         (error 'apply-env "no binding for ~s" search-var))
+        ((extend-env? env)
+         (let ((saved-var (cadr env))
+               (saved-val (caddr env))
+               (saved-env (cadddr env)))
+           (if (eq? search-var saved-var)
+             saved-val
+             (apply-env saved-env search-var))))
+        (else
+          (error 'apply-env "env:~s format is not right" env)))))
+  ; 2.4
+  ; specification
+  ;   (empty-stack) = [null] (constructor)
+  ;   (push [f] v) = [g]  (constructor)
+  ;   (pop [f]) = [g]  (observer?)
+  ;   (top [f]) = v (observer)
+  ;   (empty-stack? [f]) = t/f  (observer)
+  ;
+  ; 2.5...
+
+  ; 2.6
+  ; use hash-table, association list, etc ...
+  ; As I've implemented one using hash-table for sicp exercise, I'll ignore this one
+
+  ; 2.7 ...
+
+  ; 2.8
+  (define empty-env?
+    (lambda (env)
+      (eq? (car env) 'empty-env)))
+  ; 2.9
+  ; almost the same as apply-env
+
+  ; 2.10
+  (define extend-env*
+    (lambda (vars vals env)
+      (cond ((and (null? vars)
+                  (null? vals))
+             env)
+            ((or (null? vars)
+                 (null? vals))
+             (error 'extend-env* "vars and vals supplied is not of equal length"))
+            (else
+              (extend-env (car vars)
+                          (car vals)
+                          (extend-env* (cdr vars)
+                                       (cdr vals)
+                                       env))))))
+
+  ; 2.11
+  ; solution is obvious.
+  
+  (define procedural/empty-env
+    (lambda ()
+      (lambda (search-var)
+        (error 'apply-env "no binding found for ~s" search-var))))
+
+  (define procedural/extend-env
+    (lambda (saved-var saved-val saved-env)
+      (lambda (search-var)
+        (if (eq? search-var saved-var)
+          saved-val
+          (procedural/apply-env saved-env search-var)))))
+
+  (define procedural/apply-env
+    (lambda (env search-var)
+      (env search-var)))
+
+  ; 2.12 procedural representation for stack
+
+  ; following is data structure representation(using list)
+  ; for procedural representation see c2-stack.scm
+  (define empty-stack
+    (lambda ()
+      '()))
+
+  (define empty-stack?
+    (lambda (st)
+      (null? st)))
+
+  (define pop
+    (lambda (st)
+      (cdr st)))
+
+  (define push
+    (lambda (st v)
+      (cons v st)))
+
+  (define pop
+    (lambda (st)
+      (car st)))
+
+  ; 2.13 see https://groups.google.com/forum/#!topic/eopl3/Wf5nbWjhwKE
+  ;
+  ; 2.14 trivial
+  ;
+  ; for another example of procedural representation, see lisp.js in my
+  ; sicp exercise.
+
   (define-test-suite
     eopl-c2
     (bignum
@@ -182,5 +352,23 @@
                                 (natural->bignum 55))
                     (natural->bignum (* 43 55)))
             (fail))
-        )))
+        ))
+    (difftree
+      (lambda (fail)
+        (or (equal? (difftree/is-zero?
+                      (difftree/successor
+                        (difftree/predecessor
+                          (difftree/successor
+                            (difftree/predecessor (difftree/zero))))))
+                    #t)
+            (fail))
+        ))
+
+    (precedural/stack
+      (lambda (fail)
+        (let ((st (empty-stack)))
+          (or (equal? (top (pop (push (push (push st 3) 4) 5)))
+                      4)
+              (fail)))))
+    )
   )

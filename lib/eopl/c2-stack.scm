@@ -24,17 +24,21 @@
 
   (define top
     (lambda (st)
-      (car (st))))
+      (if (empty-stack? st)
+        (error 'top "empty stack")
+        (car (st)))))
 
   (define pop
     (lambda (st)
       (lambda ()
-        (cdr (st)))))
+        (if (empty-stack? st)
+          (error 'pop "empty stack")
+          (cdr (st))))))
 
   (define push
     (lambda (st v)
       (lambda ()
-        (cons v st))))
+        (cons v (st)))))
 
   (define-test-suite
     eopl-stack
