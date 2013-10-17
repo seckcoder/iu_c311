@@ -315,12 +315,15 @@
     (lambda (st)
       (car st)))
 
-  ; 2.13 see https://groups.google.com/forum/#!topic/eopl3/Wf5nbWjhwKE
+  ; 2.13
   ;
   ; 2.14 trivial
   ;
   ; for another example of procedural representation, see lisp.js in my
   ; sicp exercise.
+  ;
+  ; There is a discussion on the problem on eopl's google group:
+  ; https://groups.google.com/forum/#!topic/eopl3/Wf5nbWjhwKE
 
   (define-test-suite
     eopl-c2
