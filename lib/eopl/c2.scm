@@ -329,6 +329,53 @@
   ; 2.15 in eopl/c1.scm
   ;
   ; 2.16 in c2-16-lambda-exp.scm
+  ;
+  ; 2.17
+  ; There are many different kinds of lambda exp in languages such as
+  ; js, haskell...
+  ; 
+  ; 2.18
+  (define number->sequence
+    (lambda (n)
+      (list n '() '())))
+  (define current-element
+    (lambda (biseq)
+      (car biseq)))
+  (define biseq->left
+    (lambda (biseq)
+      (cadr biseq)))
+  (define biseq->right
+    (lambda (biseq)
+      (caddr biseq)))
+  (define move-to-left
+    (lambda (biseq)
+      (let ((right-lst (biseq->right biseq)))
+        (if (null? right-lst)
+          (error 'move-to-left "at the right end of sequence")
+          (list (car right-lst)
+                (cons (current-element biseq)
+                      (biseq->left biseq))
+                (cdr right-lst))))))
+  (define move-to-right
+    (lambda (biseq)
+      (let ((left-lst (biseq->left biseq)))
+        (if (null? left-lst)
+          (error 'move-to-right "at the left end of sequence")
+          (list (car left-lst)
+                (cdr left-lst)
+                (cons (current-element biseq)
+                      (biseq->right biseq)))))))
+  (define insert-to-left
+    (lambda (n biseq)
+      (list (current-element biseq)
+            (cons n (biseq->left biseq))
+            (biseq->right biseq))))
+  (define insert-to-right
+    (lambda (n biseq)
+      (list (current-element biseq)
+            (biseq->left biseq)
+            (cons n (biseq->right biseq)))))
+
   (define-test-suite
     eopl-c2
     (bignum
@@ -377,5 +424,13 @@
           (or (equal? (top (pop (push (push (push st 3) 4) 5)))
                       4)
               (fail)))))
+    (bidirectional-sequences
+      (lambda (fail)
+        (let ((biseq (number->sequence 7)))
+          (or (equal? (current-element biseq) 7) (fail))
+          (let ((biseq (move-to-right (insert-to-left 13 biseq))))
+            (or (equal? (current-element biseq) 13) (fail))
+            (let ((biseq (move-to-left (insert-to-right 12 biseq))))
+              (or (equal? (current-element biseq) 12) (fail)))))))
     )
   )
