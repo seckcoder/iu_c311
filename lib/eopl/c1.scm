@@ -8,29 +8,29 @@
 
   (define occurs-free?
     (lambda (var lcexp)
-      (cond ((identifier? lcexp)
+      (cond ((var-exp? lcexp)
              (eq? var lcexp))
             ((lambda-exp? lcexp)
-             (and (not (eq? var (lambda-binding lcexp)))
-                  (occurs-free? var (lambda-body lcexp))))
+             (and (not (eq? var (lambda-exp->bound-var lcexp)))
+                  (occurs-free? var (lambda-exp->body lcexp))))
             (else
-              (or (occurs-free? var (lcexp-first lcexp))
-                  (occurs-free? var (lcexp-second lcexp)))))))
+              (or (occurs-free? var (app-exp->ractor lcexp))
+                  (occurs-free? var (app-exp->rand lcexp)))))))
 
-  (define identifier? symbol?)
+  (define var-exp? symbol?)
   (define lambda-exp?
     (lambda (lcexp)
       (eq? (car lcexp)
            'lambda)))
-  (define lambda-binding
+  (define lambda-exp->bound-var
     (lambda (lcexp)
       (caadr lcexp)))
-  (define lambda-body
+  (define lambda-exp->body
     (lambda (lcexp)
       (caddr lcexp)))
 
-  (define lcexp-first car)
-  (define lcexp-second cadr)
+  (define app-exp->ractor car)
+  (define app-exp->rand cadr)
 
   (define-test-suite
     eopl-c1

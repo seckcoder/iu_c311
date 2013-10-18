@@ -311,7 +311,7 @@
     (lambda (st v)
       (cons v st)))
 
-  (define pop
+  (define top
     (lambda (st)
       (car st)))
 
@@ -325,6 +325,9 @@
   ; There is a discussion on the problem on eopl's google group:
   ; https://groups.google.com/forum/#!topic/eopl3/Wf5nbWjhwKE
 
+  ; chapter 2, section 3: interfaces for recursive data types
+  ; 2.15 in eopl/c1.scm
+  ;
   (define-test-suite
     eopl-c2
     (bignum
