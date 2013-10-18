@@ -328,6 +328,7 @@
   ; chapter 2, section 3: interfaces for recursive data types
   ; 2.15 in eopl/c1.scm
   ;
+  ; 2.16 in c2-16-lambda-exp.scm
   (define-test-suite
     eopl-c2
     (bignum
