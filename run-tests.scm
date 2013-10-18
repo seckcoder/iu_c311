@@ -11,6 +11,7 @@
   (eopl c2)
   (eopl c2-stack)
   (eopl c2-16-lambda-exp)
+  (eopl c2-20)
   )
 
 (define (print-parse-roundtrip e)
@@ -51,4 +52,6 @@
                                   (return (var x))))
                           error))))
 
-(run-tests basic helpers sets record-case-tests a1 eopl-c1 eopl-c2 eopl-stack eopl-c2-16)
+(run-tests basic helpers sets record-case-tests
+           a1 eopl-c1 eopl-c2 eopl-stack eopl-c2-16
+           eopl-c2-20)

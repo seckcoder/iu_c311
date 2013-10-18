@@ -274,7 +274,7 @@
 
   ; 2.11
   ; solution is obvious.
-  
+
   (define procedural/empty-env
     (lambda ()
       (lambda (search-var)
@@ -376,6 +376,49 @@
             (biseq->left biseq)
             (cons n (biseq->right biseq)))))
 
+  ; 2.19
+  (define number->bintree
+    (lambda (n)
+      (make-bintree n '() '())))
+
+  (define make-bintree
+    (lambda (root left right)
+      (list root left right)))
+
+  (define leaf? 
+    (lambda (bt)
+      (null? bt)))
+
+  (define bintree-root
+    (lambda (bt)
+      (car bt)))
+
+  (define bintree-left
+    (lambda (bt)
+      (cadr bt)))
+
+  (define bintree-right
+    (lambda (bt)
+      (caddr bt)))
+
+  (define bintree-insert-left
+    (lambda (ele bt)
+      (make-bintree (bintree-root bt)
+                    (make-bintree ele
+                                  (bintree-left bt)
+                                  '())
+                    (bintree-right bt))))
+
+  (define bintree-insert-right
+    (lambda (ele bt)
+      (make-bintree (bintree-root bt)
+                    (bintree-left bt)
+                    (make-bintree ele
+                                  '()
+                                  (bintree-right bt)))))
+
+  ; 2.20
+  ; in eopl/c2-20.scm
   (define-test-suite
     eopl-c2
     (bignum
@@ -432,5 +475,12 @@
             (or (equal? (current-element biseq) 13) (fail))
             (let ((biseq (move-to-left (insert-to-right 12 biseq))))
               (or (equal? (current-element biseq) 12) (fail)))))))
-    )
-  )
+    (bintree
+      (lambda (fail)
+        (let ((bintree (bintree-insert-right 14
+                                             (bintree-insert-left 12
+                                                                  (number->bintree 13)))))
+          (or (equal? (bintree-root (bintree-left bintree)) 12) (fail))
+          (or (equal? (leaf? (bintree-right (bintree-left bintree))) #t) (fail))
+          )))
+    ))
