@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCHEME=${SCHEME:-guile}
+SCHEME=${SCHEME:-petite}
 
 case $SCHEME in
     guile)
