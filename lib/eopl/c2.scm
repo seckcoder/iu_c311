@@ -419,6 +419,8 @@
 
   ; 2.20
   ; in eopl/c2-20.scm
+  ; 2.21
+  ; in eopl3/chapter2/e2.scm
   (define-test-suite
     eopl-c2
     (bignum
