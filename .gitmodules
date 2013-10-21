@@ -1,0 +1,3 @@
+[submodule "eopl3"]
+	path = eopl3
+	url = https://github.com/seckcoder/eopl3.git
