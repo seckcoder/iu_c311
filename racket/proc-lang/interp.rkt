@@ -27,39 +27,17 @@
     (body anything?) 
     (env anything?)))
 
-(define proc->var
-  (lambda (proc-value)
-    (cases
-      proc proc-value
-      (closure
-        (var body env)
-        var)
-      (else (eopl:error 'proc "invalid procedure value:" proc-value)))))
-
-(define proc->body
-  (lambda (proc-value)
-    (cases
-      proc proc-value
-      (closure
-        (var body env)
-        body)
-      (else (eopl:error 'proc "invalid procedure value:" proc-value)))))
-
-(define proc->env
-  (lambda (proc-value)
-    (cases
-      proc proc-value
-      (closure
-        (var body env)
-        env)
-      (else (eopl:error 'proc "invalid procedure value:" proc-value)))))
-
 (define apply-proc
-  (lambda (proc arg)
-    (let ((new-env (extend-env (proc->var proc)
-                               arg
-                               (proc->env proc))))
-      (interp-exp (proc->body proc) new-env))))
+  (lambda (proc1 arg)
+    (cases
+      proc proc1
+      (closure
+        (var body env)
+        (let ((new-env (extend-env var
+                                   arg
+                                   env)))
+          (interp-exp body new-env)))
+      (else (eopl:error 'apply-proc "invalid procedure value:" proc1)))))
 
 ; environment
 
