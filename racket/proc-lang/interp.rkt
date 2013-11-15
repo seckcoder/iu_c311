@@ -48,6 +48,11 @@
   (extend-env
     (var symbol?)
     (val anything?)
+    (env environment?))
+  (extend-rec-env
+    (pname symbol?)
+    (b-var symbol?)
+    (b-body anything?)
     (env environment?)))
 
 (define apply-env
@@ -61,15 +66,22 @@
         (var val inherited-env)
         (if (eq? var search-var)
           val
-          (apply-env inherited-env search-var))))))
-
+          (apply-env inherited-env search-var)))
+      (extend-rec-env
+        (pname b-var b-body inherited-env)
+        (if (eq? search-var pname)
+          (closure b-var b-body env)
+          (apply-env inherited-env search-var)))
+        )))
 
 ; grammer
 (define scanner-spec-a
   '((white-sp (whitespace) skip)
     (comment ("%" (arbno (not #\newline))) skip)
     (identifier (letter (arbno (or letter digit))) symbol)
-    (number (digit (arbno digit)) number)))
+    (number (digit (arbno digit)) number)
+    (number ("-" digit (arbno digit)) number)
+    ))
 
 
 (define grammar-al
@@ -100,6 +112,9 @@
     (expression
       ("(" expression expression ")")
       call-exp)
+    (expression
+      ("letrec" identifier "(" identifier ")" "=" expression "in" expression)
+      letrec-exp)
     ))
 
 (define list-the-datatypes
@@ -148,6 +163,13 @@
         (let ((proc (interp-exp exp1 env))
               (arg (interp-exp exp2 env)))
           (apply-proc proc arg)))
+      (letrec-exp
+        (p-name b-var b-body letrec-body)
+        (let ((new-env (extend-rec-env p-name
+                                       b-var
+                                       b-body
+                                       env)))
+          (interp-exp letrec-body new-env)))
       )))
 
 (define initial-env (empty-env))
@@ -174,6 +196,10 @@
                                     in proc (y) -(y,x)
                             in let x = 4
                                in (f 5)")))
+    (display (interp datum))(newline))
+
+  (let ((datum (scan&parse "letrec double(n) = if zero?(n) then 0 else -((double -(n,1)), -2)
+                            in (double 6)")))
     (display (interp datum)))
   )
 
