@@ -7,7 +7,9 @@
 
 (provide (all-defined))
 
-; expval := Int | Bool
+; expval := Int | Bool | Proc
+; during the implemention, I find this datatype actually
+; useless...
 (define-datatype
   expval expval?
   (numval
@@ -18,23 +20,46 @@
     (var symbol?)
     (body anything?)))
 
-(define procval->var
-  (lambda (val)
-    (cases
-      expval val
-      (procval
-        (var body)
-        var)
-      (else (eopl:error 'proc "invalid procedure:" val)))))
+(define-datatype
+  proc proc?
+  (closure
+    (var symbol?)
+    (body anything?) 
+    (env anything?)))
 
-(define procval->body
-  (lambda (val)
+(define proc->var
+  (lambda (proc-value)
     (cases
-      expval val
-      (procval
-        (var body)
+      proc proc-value
+      (closure
+        (var body env)
+        var)
+      (else (eopl:error 'proc "invalid procedure value:" proc-value)))))
+
+(define proc->body
+  (lambda (proc-value)
+    (cases
+      proc proc-value
+      (closure
+        (var body env)
         body)
-      (else (eopl:error 'proc "invalid procedure:" val)))))
+      (else (eopl:error 'proc "invalid procedure value:" proc-value)))))
+
+(define proc->env
+  (lambda (proc-value)
+    (cases
+      proc proc-value
+      (closure
+        (var body env)
+        env)
+      (else (eopl:error 'proc "invalid procedure value:" proc-value)))))
+
+(define apply-proc
+  (lambda (proc arg)
+    (let ((new-env (extend-env (proc->var proc)
+                               arg
+                               (proc->env proc))))
+      (interp-exp (proc->body proc) new-env))))
 
 ; environment
 
@@ -139,14 +164,12 @@
           (interp-exp exp2 new-env)))
       (proc-exp
         (var body)
-        (procval var body))
+        (closure var body env))
       (call-exp
         (exp1 exp2)
-        (let ((proc (interp-exp exp1 env)))
-          (let ((new-env (extend-env (procval->var proc)
-                                     (interp-exp exp2 env)
-                                     env)))
-            (interp-exp (procval->body proc) new-env))))
+        (let ((proc (interp-exp exp1 env))
+              (arg (interp-exp exp2 env)))
+          (apply-proc proc arg)))
       )))
 
 (define initial-env (empty-env))
@@ -165,6 +188,10 @@
   (let ((datum (scan&parse "(proc (f) (f (f 77))
                              proc (x) -(x,11))")))
     (display (interp datum))(newline))
+  
+  ; the following example is used to identify scoping of the proc-lang.
+  ; if it's dynamic scoping, then the result will be 1, else result will be
+  ; 2 with lexical scoping
   (let ((datum (scan&parse "let f = let x = 3
                                     in proc (y) -(y,x)
                             in let x = 4

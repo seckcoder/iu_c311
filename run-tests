@@ -9,4 +9,9 @@ case $SCHEME in
     petite)
         $SCHEME --libdirs lib --script run-tests.scm
         ;;
+    racket)
+        (
+        cd racket
+        ./run-tests
+        )
 esac
