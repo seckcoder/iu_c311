@@ -181,6 +181,11 @@
         (exp)
         (interp-exp exp initial-env)))))
 
+(define test-prog
+  (lambda (prog)
+    (display (interp (scan&parse prog)))
+    (newline)))
+
 (define (test)
   (let ((datum (scan&parse "let f = proc (x) -(x,11)
                              in (f (f 77))")))
@@ -205,4 +210,4 @@
 
 ; (display (list-the-datatypes))
 
-(test)
+; (test)
