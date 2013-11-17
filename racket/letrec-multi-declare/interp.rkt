@@ -23,18 +23,18 @@
 (define-datatype
   proc proc?
   (closure
-    (var symbol?)
+    (vars (list-of symbol?))
     (body anything?) 
     (env anything?)))
 
 (define apply-proc
-  (lambda (proc1 arg)
+  (lambda (proc1 args)
     (cases
       proc proc1
       (closure
-        (var body env)
-        (let ((new-env (extend-env var
-                                   arg
+        (vars body env)
+        (let ((new-env (extend-env vars
+                                   args
                                    env)))
           (interp-exp body new-env)))
       (else (eopl:error 'apply-proc "invalid procedure value:" proc1)))))
@@ -46,12 +46,12 @@
   environment environment?
   (empty-env)
   (extend-env
-    (var symbol?)
-    (val anything?)
+    (vars (list-of symbol?))
+    (vals (list-of anything?))
     (env environment?))
   (extend-rec-env
     (pnames (list-of symbol?))
-    (b-vars (list-of symbol?))
+    (b-vars (list-of (list-of symbol?)))
     (b-bodys (list-of anything?))
     (env environment?))
   )
@@ -64,16 +64,17 @@
         ()
         (eopl:error 'apply-env "var:~s not found" search-var))
       (extend-env
-        (var val inherited-env)
-        (if (eq? var search-var)
-          val
-          (apply-env inherited-env search-var)))
+        (vars vals inherited-env)
+        (let ((idx (index-of vars search-var)))
+          (if (< idx 0)
+            (apply-env inherited-env search-var)
+            (list-ref vals idx))))
       (extend-rec-env
-        (pnames b-vars b-bodies inherited-env)
+        (pnames b-lst-of-vars b-bodies inherited-env)
         (let ((idx (index-of pnames search-var)))
           (if (< idx 0)
             (apply-env inherited-env search-var)
-            (closure (list-ref b-vars idx)
+            (closure (list-ref b-lst-of-vars idx)
                      (list-ref b-bodies idx)
                      env))))
         )))
@@ -108,16 +109,16 @@
       (identifier)
       var-exp)
     (expression
-      ("let" identifier "=" expression "in" expression)
+      ("let" (arbno identifier "=" expression) "in" expression)
       let-exp)
     (expression
-      ("proc" "(" identifier ")" expression)
+      ("proc" "(" (arbno identifier) ")" expression)
       proc-exp)
     (expression
-      ("(" expression expression ")")
+      ("(" expression (arbno expression) ")")
       call-exp)
     (expression
-      ("letrec" (arbno identifier "(" identifier ")" "=" expression) "in" expression)
+      ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" expression) "in" expression)
       letrec-exp)
     ))
 
@@ -154,23 +155,28 @@
         (var)
         (apply-env env var))
       (let-exp
-        (var exp1 exp2)
-        (let ((new-env (extend-env var
-                                   (interp-exp exp1 env)
-                                   env)))
-          (interp-exp exp2 new-env)))
+        (vars val-exps exp2)
+        (let ((vals (map (lambda (val-exp)
+                           (interp-exp val-exp env))
+                         val-exps)))
+          (let ((new-env (extend-env vars
+                                     vals
+                                     env)))
+            (interp-exp exp2 new-env))))
       (proc-exp
-        (var body)
-        (closure var body env))
+        (vars body)
+        (closure vars body env))
       (call-exp
-        (exp1 exp2)
-        (let ((proc (interp-exp exp1 env))
-              (arg (interp-exp exp2 env)))
-          (apply-proc proc arg)))
+        (proc-exp arg-exps)
+        (let ((proc (interp-exp proc-exp env))
+              (args (map (lambda (arg-exp)
+                           (interp-exp arg-exp env))
+                         arg-exps)))
+          (apply-proc proc args)))
       (letrec-exp
-        (p-names b-vars b-bodys letrec-body)
+        (p-names b-lst-of-vars b-bodys letrec-body)
         (let ((new-env (extend-rec-env p-names
-                                       b-vars
+                                       b-lst-of-vars
                                        b-bodys
                                        env)))
           (interp-exp letrec-body new-env)))
@@ -228,6 +234,21 @@
                     bar(b) = b
                   in (foo 3)"
                   3)
+
+  ; for multi args test
+  (test-prog-eqv "let f = proc (x y) -(x,y)
+                  in (f 10 2)"
+                  8)
+  (test-prog-eqv "let x = 10
+                      y = 2
+                      f = proc (x y) -(x,y)
+                  in (f x y)"
+                  8)
+  (test-prog-eqv "letrec
+                    foo() = (bar)
+                    bar() = -(10,2)
+                  in (foo)"
+                  8)
   (display "finished test...")
   )
 
