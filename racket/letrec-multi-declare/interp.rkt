@@ -120,6 +120,9 @@
     (expression
       ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" expression) "in" expression)
       letrec-exp)
+    (expression
+      ("{" (arbno expression ";") "}")
+      compound-exp)
     ))
 
 (define list-the-datatypes
@@ -131,6 +134,16 @@
 (define scan&parse
   (sllgen:make-string-parser scanner-spec-a grammar-al))
 
+
+(define interp-exps-ret-last
+  (lambda (exps env)
+    (cond ((null? exps)
+           (eopl:error 'compund-exps "no expression in block"))
+          ((null? (cdr exps))
+           (interp-exp (car exps) env))
+          (else
+            (interp-exp (car exps) env)
+            (interp-exps-ret-last (cdr exps) env)))))
 
 (define interp-exp 
   (lambda (exp env)
@@ -180,6 +193,9 @@
                                        b-bodys
                                        env)))
           (interp-exp letrec-body new-env)))
+      (compound-exp
+        (exps)
+        (interp-exps-ret-last exps env))
       )))
 
 (define initial-env (empty-env))
@@ -249,6 +265,13 @@
                     bar() = -(10,2)
                   in (foo)"
                   8)
+  ; test block
+  (test-prog-eqv "{
+                    -(3,2);
+                    -(4,2);
+                    -(5,1);
+                  }"
+                 4)
   (display "finished test...")
   )
 
