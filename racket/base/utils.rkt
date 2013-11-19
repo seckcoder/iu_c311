@@ -1,6 +1,14 @@
 #lang eopl
 
-(provide (all-defined))
+(require racket/base)
+
+(provide anything?
+         list-of
+         index-of
+         check
+         println
+         foldl
+         )
 
 (define anything?
   (lambda (v)
@@ -23,3 +31,15 @@
             (else
               (iter (cdr lst) v (+ 1 idx)))))
     (iter lst v 0)))
+
+(define-syntax check
+  (syntax-rules ()
+    [(_ pred a b)
+     (if (not (pred a b))
+       (eopl:error 'check "~s not ~s ~s" `a `pred `b)
+       'ok)]))
+
+(define println
+  (lambda args
+    (apply eopl:printf args)
+    (newline)))
