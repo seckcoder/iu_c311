@@ -51,7 +51,8 @@
                                    (cons (car store1)
                                          (setref-inner (cdr store1) (- ref1 1))))
                                  ))))
-                      (setref-inner the-store ref)))))
+                      (setref-inner the-store ref)))
+    new-val))
 
 (define test-store
   (lambda ()

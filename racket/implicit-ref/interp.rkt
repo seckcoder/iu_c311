@@ -300,5 +300,12 @@
                     set x = 12; (odd);
                    }"
                    0)
+  (test-prog-eqv "let p = proc(x) set x = 4
+                  in let a = 3
+                     in {
+                      (p a);
+                      a;
+                  }"
+                  3) ; call by value
   (display "finished test...")
   )
