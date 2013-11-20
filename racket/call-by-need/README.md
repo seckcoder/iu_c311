@@ -1,6 +1,6 @@
 based on implicit reference
 
-call by need and call by name
+call by need/call by name 4.39
 
 During the implementation of call by need, I finally could
 understand the usage of datatype:expval and datatype:procedure.
