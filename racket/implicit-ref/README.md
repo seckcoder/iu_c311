@@ -1,5 +1,5 @@
 based on letrec-multi-declare
-implicit reference with recursion based on circular structure
+implicit reference(call-by-value) with recursion based on circular structure
 The implementation on the book is actually wrong. Each time you call a recursive
 procedure, it will allocate a new piece of memory.
 
