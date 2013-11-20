@@ -8,7 +8,7 @@
 
 (provide (all-defined))
 
-(define use-memoization #f)
+(define use-memoization #t)
 ; expval := Int | Bool | Proc
 (define-datatype
   expval expval?
@@ -384,8 +384,31 @@
                               x;
                              }
                      in (f -(a,b)) "
-                  1)
+                  -1)
+  ; for 4.38. the modified version can't run 
+  ; under call-by-value. Reason is not lazy enough,
+  ; as a result, infinite-recursion.
+  (test-prog-eqv "let makerec = proc (f)
+                                  let d = proc (x)
+                                            proc (z) ((f (x x)) z)
+                                  in proc (n) ((f (d d)) n)
+                  in let maketimes4 = proc (f)
+                                        proc (x)
+                                          if zero?(x)
+                                          then 0
+                                          else -((f -(x,1)), -4)
+                     in let times4 = (makerec maketimes4) in (times4 3)"
+                   12)
+  (test-prog-eqv "let makrec = proc(f)
+                                let d = proc (x) (f (x x))
+                                in (f (d d))
+                  in let maketimes4 = proc(f)
+                                        proc(x)
+                                          if zero?(x)
+                                          then 0
+                                          else -((f -(x,1)), -4)
+                     in let times4 = (makrec maketimes4)
+                        in (times4 3)"
+                  12)
   (display "finished test...")
   )
-
-(test)

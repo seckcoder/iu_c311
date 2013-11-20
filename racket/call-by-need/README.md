@@ -9,5 +9,5 @@ call by name is not suggested when program has side-effect since it's
 hard to determine the order of evaluation(which is important for program has side-effect)
 for program in lazy-evaluation style.
 
-call by need must not be used in program has side-effect. for a bad case, see
+call by need must not be used in program that has side-effect. For a bad case, see
 the test code in "interp.rkt"
