@@ -322,5 +322,18 @@
                       a;
                   }"
                   4) ; call by value result
+  ; eopl 4.37 
+  ; for call-by-value-result, result is 4
+  ; for call-by-reference, result is 3
+  (test-prog-eqv "let p = proc(x y) {
+                           set y = 4;
+                           set x = 3;
+                         }
+                      x = 0
+                  in {
+                    (p x x);
+                    x;
+                  }"
+                  4)
   (display "finished test...")
   )
