@@ -43,3 +43,9 @@
   (lambda args
     (apply eopl:printf args)
     (newline)))
+
+(define list-n
+  (lambda (n v)
+    (if (= n 0)
+      '()
+      (cons v (list-n (- n 1) v)))))
