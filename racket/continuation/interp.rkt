@@ -3,6 +3,7 @@
 #lang eopl
 
 (require "../base/utils.rkt")
+(require "store.rkt")
 (require racket/file)
 
 (provide (all-defined))
@@ -33,8 +34,9 @@
       proc proc1
       (closure
         (var body env)
-        (let ((new-env (extend-env var
-                                   arg
+        (let* ((ref (newref arg))
+               (new-env (extend-env var
+                                   ref
                                    env)))
           (interp-exp/k body new-env cont)))
       (else (eopl:error 'apply-proc "invalid procedure value:" proc1)))))
@@ -48,12 +50,18 @@
   (extend-env
     (var symbol?)
     (val anything?)
-    (env environment?))
-  (extend-rec-env
-    (pname symbol?)
-    (b-var symbol?)
-    (b-body anything?)
     (env environment?)))
+
+(define extend-env-recursively
+  (lambda (p-name b-var b-body env)
+    (let* ((proc-ref (newref '()))
+           (new-env (extend-env p-name
+                                proc-ref
+                                env)))
+      (setref! proc-ref (closure b-var
+                                 b-body
+                                 new-env))
+      new-env)))
 
 (define apply-env
   (lambda (env search-var)
@@ -67,12 +75,7 @@
         (if (eq? var search-var)
           val
           (apply-env inherited-env search-var)))
-      (extend-rec-env
-        (pname b-var b-body inherited-env)
-        (if (eq? search-var pname)
-          (closure b-var b-body env)
-          (apply-env inherited-env search-var)))
-        )))
+      )))
 
 
 (define-datatype
@@ -141,8 +144,9 @@
         (apply-cont next-cont (zero? exp-val)))
       (let-cont
         (var env body next-cont)
-        (let ((new-env (extend-env var
-                                   exp-val
+        (let* ((ref (newref exp-val))
+               (new-env (extend-env var
+                                   ref
                                    env)))
           (interp-exp/k body new-env next-cont)))
       (diff-subtractor-cont
@@ -287,7 +291,7 @@
         (interp-exp/k predicate env (if-cont sbj-exp else-exp env cont)))
       (var-exp
         (var)
-        (apply-cont cont (apply-env env var)))
+        (apply-cont cont (deref (apply-env env var))))
       (let-exp
         (var exp1 body)
         (interp-exp/k exp1 env (let-cont var env body cont)))
@@ -299,10 +303,10 @@
         (interp-exp/k exp1 env (call-exp-arg-cont exp2 env cont)))
       (letrec-exp
         (p-name b-var b-body letrec-body)
-        (let ((new-env (extend-rec-env p-name
-                                       b-var
-                                       b-body
-                                       env)))
+        (let ((new-env (extend-env-recursively p-name
+                                               b-var
+                                               b-body
+                                               env)))
           (interp-exp/k letrec-body new-env cont)))
       (cons-exp
         (carv-exp cdrv-exp)
@@ -336,6 +340,7 @@
       program datum
       (a-program
         (exp)
+        (initialize-store!)
         (interp-exp/k exp initial-env (end-cont))))))
 
 
