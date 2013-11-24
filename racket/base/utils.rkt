@@ -22,7 +22,6 @@
                (pred (car val))
                ((list-of pred) (cdr val)))))))
 
-
 (define index-of
   (lambda (lst v)
     (define (iter lst v idx)
@@ -36,7 +35,7 @@
   (syntax-rules ()
     [(_ pred a b)
      (if (not (pred a b))
-       (eopl:error 'check "~s not ~s ~s" `a `pred `b)
+       (eopl:error 'check "~s:~s not ~s ~s:~s" `a a `pred `b b)
        'ok)]))
 
 (define println
