@@ -127,7 +127,11 @@
   (multi-exp-cont
     (exps (list-of anything?))
     (accum-op anything?)
-    (accum (list-of anything?))
+    (accum anything?)
+    (env environment?)
+    (cont continuation?))
+  (set-rhs-cont
+    (ref reference?)
     (env environment?)
     (cont continuation?))
   )
@@ -189,6 +193,9 @@
                        (accum-op exp-val accum)
                        env
                        next-cont))
+      (set-rhs-cont
+        (var-ref env next-cont)
+        (apply-cont next-cont (setref! var-ref exp-val)))
       )))
 
 ; grammer
@@ -250,6 +257,12 @@
     (expression
       ("list(" (arbno expression) ")")
       list-exp)
+    (expression
+      ("{" (arbno expression ";") "}")
+      compound-exp)
+    (expression
+      ("set" identifier "=" expression)
+      set-exp)
     ))
 
 (define list-the-datatypes
@@ -331,6 +344,19 @@
                        '()
                        env
                        cont))
+      (compound-exp
+        (exps)
+        (interp-exps/k exps
+                       (lambda (val accum)
+                         val)
+                       '()
+                       env
+                       cont))
+      (set-exp
+        (var exp)
+        (interp-exp/k exp
+                      env
+                      (set-rhs-cont (apply-env env var) env cont)))
       )))
 
 (define initial-env (empty-env))
@@ -386,4 +412,12 @@
                     '())
   (test-prog-equalv "list(1 2 3 list(2 3) 4 5)"
                     '(1 2 3 (2 3) 4 5))
+  ; test implicit ref and call by value
+  (test-prog-eqv "let p = proc(x) set x = 4
+                  in let a = 3
+                     in {
+                      (p a);
+                      a;
+                  }"
+                  3)
   )
