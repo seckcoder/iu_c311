@@ -17,16 +17,68 @@
     (int integer?))
   (boolval
     (bool boolean?))
+  (listval
+    (list list?))
   (procval
-    (var symbol?)
-    (body anything?)))
+    (proc proc?)))
+
+(define expval->normalval
+  (lambda (val)
+    (cases expval val
+      (numval
+        (num)
+        num)
+      (boolval
+        (bool)
+        bool)
+      (listval
+        (lst)
+        (map expval->normalval lst))
+      (procval
+        (proc)
+        proc))))
+
+(define expval->listval
+  (lambda (val)
+    (cases expval val
+      (listval
+        (lst)
+        lst)
+      (else
+        (eopl:error 'expval->listval "~s is not a list" val)))))
+
+(define expval->numval
+  (lambda (val)
+    (cases expval val
+      (numval
+        (num)
+        num)
+      (else
+        (eopl:error 'expval->numval "~s is not a num" val)))))
+
+(define expval->boolval
+  (lambda (val)
+    (cases expval val
+      (boolval
+        (bool)
+        bool)
+      (else
+        (eopl:error 'expval->boolval "~s is not a bool" val)))))
+(define expval->procval
+  (lambda (val)
+    (cases expval val
+      (procval
+        (proc)
+        proc)
+      (else
+        (eopl:error 'expval->procval "~s is not a proc" val)))))
 
 (define-datatype
   proc proc?
   (closure
     (var symbol?)
-    (body anything?) 
-    (env anything?)))
+    (body expression?) 
+    (env environment?)))
 
 (define apply-proc
   (lambda (proc1 arg cont)
@@ -49,7 +101,7 @@
   (empty-env)
   (extend-env
     (var symbol?)
-    (val anything?)
+    (ref reference?)
     (env environment?)))
 
 (define extend-env-recursively
@@ -58,9 +110,9 @@
            (new-env (extend-env p-name
                                 proc-ref
                                 env)))
-      (setref! proc-ref (closure b-var
-                                 b-body
-                                 new-env))
+      (setref! proc-ref (procval (closure b-var
+                                          b-body
+                                          new-env)))
       new-env)))
 
 (define apply-env
@@ -86,24 +138,24 @@
   (let-cont
     (var symbol?)
     (env environment?)
-    (body anything?)
+    (body expression?)
     (cont continuation?))
   (diff-subtractor-cont
-    (subtractor-exp anything?)
+    (subtractor-exp expression?)
     (env environment?)
     (cont continuation?))
   (diff-cont
     ; todo (expval support)
-    (minuend-val anything?)
+    (minuend-val expval?)
     (env environment?)
     (cont continuation?))
   (if-cont
-    (sbj-exp anything?)
-    (else-exp anything?)
+    (sbj-exp expression?)
+    (else-exp expression?)
     (env environment?)
     (cont continuation?))
   (call-exp-arg-cont
-    (arg-exp anything?)
+    (arg-exp expression?)
     (env environment?)
     (cont continuation?))
   (call-exp-cont
@@ -111,11 +163,11 @@
     (env environment?)
     (cont continuation?))
   (cons-exp-cont1
-    (cdrv-exp anything?)
+    (cdrv-exp expression?)
     (env environment?)
     (cont continuation?))
   (cons-exp-cont2
-    (carv anything?)
+    (carv expval?)
     (env environment?)
     (cont continuation?))
   (car-exp-cont
@@ -125,27 +177,36 @@
   (is-empty-exp-cont
     (cont continuation?))
   (multi-exp-cont
-    (exps (list-of anything?))
-    (accum-op anything?)
-    (accum anything?)
+    (exps (list-of expression?))
+    (accum-op procedure?)
+    (accum expval?)
     (env environment?)
     (cont continuation?))
   (set-rhs-cont
     (ref reference?)
     (env environment?)
     (cont continuation?))
+  (mult-cont1
+    (exp2 expression?)
+    (env environment?)
+    (cont continuation?))
+  (mult-cont2
+    (val expval?)
+    (cont continuation?))
   )
 
+(define sigend 0)
 (define apply-cont
   (lambda (cont exp-val)
     (cases continuation cont
       (end-cont
         ()
         (println "End of computation")
+        (set! sigend (+ sigend 1))
         exp-val)
       (zero-cont
         (next-cont)
-        (apply-cont next-cont (zero? exp-val)))
+        (apply-cont next-cont (boolval (zero? (expval->numval exp-val)))))
       (let-cont
         (var env body next-cont)
         (let* ((ref (newref exp-val))
@@ -159,15 +220,16 @@
                       (diff-cont exp-val env next-cont)))
       (diff-cont
         (minuend-val env next-cont)
-        (apply-cont next-cont (- minuend-val exp-val)))
+        (apply-cont next-cont (numval (- (expval->numval minuend-val)
+                                         (expval->numval exp-val)))))
       (if-cont
         (sbj-exp else-exp env next-cont)
-        (if exp-val
+        (if (expval->boolval exp-val)
           (interp-exp/k sbj-exp env next-cont)
           (interp-exp/k else-exp env next-cont)))
       (call-exp-arg-cont
         (arg-exp env next-cont)
-        (interp-exp/k arg-exp env (call-exp-cont exp-val env next-cont)))
+        (interp-exp/k arg-exp env (call-exp-cont (expval->procval exp-val) env next-cont)))
       (call-exp-cont
         (proc env next-cont)
         (apply-proc proc exp-val next-cont))
@@ -176,16 +238,17 @@
         (interp-exp/k cdrv-exp env (cons-exp-cont2 exp-val env next-cont)))
       (cons-exp-cont2
         (carv env next-cont)
-        (apply-cont next-cont (cons carv exp-val)))
+        (apply-cont next-cont (listval (cons carv
+                                             (expval->listval exp-val)))))
       (car-exp-cont
         (next-cont)
-        (apply-cont next-cont (car exp-val)))
+        (apply-cont next-cont (car (expval->listval exp-val))))
       (cdr-exp-cont
         (next-cont)
-        (apply-cont next-cont (cdr exp-val)))
+        (apply-cont next-cont (cdr (expval->listval exp-val))))
       (is-empty-exp-cont
         (next-cont)
-        (apply-cont next-cont (null? exp-val)))
+        (apply-cont next-cont (boolval (null? (expval->listval exp-val)))))
       (multi-exp-cont
         (exps accum-op accum env next-cont)
         (interp-exps/k exps
@@ -196,6 +259,13 @@
       (set-rhs-cont
         (var-ref env next-cont)
         (apply-cont next-cont (setref! var-ref exp-val)))
+      (mult-cont1
+        (exp2 env next-cont)
+        (interp-exp/k exp2 env (mult-cont2 exp-val next-cont)))
+      (mult-cont2
+        (val1 next-cont)
+        (apply-cont next-cont (numval (* (expval->numval val1)
+                                         (expval->numval exp-val)))))
       )))
 
 ; grammer
@@ -263,6 +333,9 @@
     (expression
       ("set" identifier "=" expression)
       set-exp)
+    (expression
+      ("*(" expression "," expression ")")
+      mult-exp)
     ))
 
 (define list-the-datatypes
@@ -288,11 +361,12 @@
 
 (define interp-exp/k
   (lambda (exp env cont)
+    ; (display cont)(newline)(newline)
     (cases
       expression exp
       (const-exp
         (num)
-        (apply-cont cont num))
+        (apply-cont cont (numval num)))
       (diff-exp
         (minuend subtractor)
         (interp-exp/k minuend env (diff-subtractor-cont subtractor env cont)))
@@ -310,7 +384,7 @@
         (interp-exp/k exp1 env (let-cont var env body cont)))
       (proc-exp
         (var body)
-        (apply-cont cont (closure var body env)))
+        (apply-cont cont (procval (closure var body env))))
       (call-exp
         (exp1 exp2)
         (interp-exp/k exp1 env (call-exp-arg-cont exp2 env cont)))
@@ -332,7 +406,7 @@
         (interp-exp/k lst-exp env (cdr-exp-cont cont)))
       (empty-lst-exp
         ()
-        (apply-cont cont '()))
+        (apply-cont cont (listval '())))
       (is-empty-exp
         (lst-exp)
         (interp-exp/k lst-exp env (is-empty-exp-cont cont)))
@@ -340,8 +414,9 @@
         (exps)
         (interp-exps/k exps
                        (lambda (val accum)
-                         (append accum (list val)))
-                       '()
+                         (listval (append (expval->listval accum)
+                                          (list val))))
+                       (listval '())
                        env
                        cont))
       (compound-exp
@@ -349,7 +424,7 @@
         (interp-exps/k exps
                        (lambda (val accum)
                          val)
-                       '()
+                       (listval '())
                        env
                        cont))
       (set-exp
@@ -357,6 +432,9 @@
         (interp-exp/k exp
                       env
                       (set-rhs-cont (apply-env env var) env cont)))
+      (mult-exp
+        (exp1 exp2)
+        (interp-exp/k exp1 env (mult-cont1 exp2 env cont)))
       )))
 
 (define initial-env (empty-env))
@@ -366,9 +444,17 @@
       program datum
       (a-program
         (exp)
+        (set! sigend 0)
         (initialize-store!)
-        (interp-exp/k exp initial-env (end-cont))))))
+        (let ((result (interp-exp/k exp initial-env (end-cont))))
+          (if (= sigend 1)
+            (expval->normalval result)
+            (eopl:error 'interp "violate cps")
+            ))))))
 
+(define test-prog
+  (lambda (prog)
+    (interp (scan&parse prog))))
 
 (define test-prog-eqv 
   (lambda (prog v)
@@ -420,4 +506,11 @@
                       a;
                   }"
                   3)
+
+   ; fact
+   (test-prog-eqv "letrec fact(n) = if zero?(n)
+                                    then 1
+                                    else *(n, (fact -(n, 1)))
+                   in (fact 4)"
+                   24)
   )
