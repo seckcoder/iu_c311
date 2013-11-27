@@ -234,16 +234,19 @@
           (subtractor-exp env next-cont)
           (reg-set 'exp subtractor-exp)
           (reg-set 'cont (diff2-cont exp-val env next-cont))
+          (reg-set 'env env)
           (interp-exp/k))
         (diff2-cont
           (minuend-val env next-cont)
           (reg-set 'exp-val (numval (- (expval->numval minuend-val)
                                            (expval->numval exp-val))))
           (reg-set 'cont next-cont)
+          (display (reg-get 'env))
           (apply-cont))
         (if-test-cont
           (sbj-exp else-exp env next-cont)
           (reg-set 'cont next-cont)
+          (reg-set 'env env)
           (if (expval->boolval exp-val)
             (begin
               (reg-set 'exp sbj-exp)
@@ -267,6 +270,7 @@
           (cdrv-exp env next-cont)
           (reg-set 'exp cdrv-exp)
           (reg-set 'cont (cons2-cont exp-val env next-cont))
+          (reg-set 'env env)
           (interp-exp/k))
         (cons2-cont
           (carv env next-cont)
@@ -282,7 +286,7 @@
         (cdr-exp-cont
           (next-cont)
           (reg-set 'cont next-cont)
-          (reg-set 'exp-val (cdr (expval->listval exp-val)))
+          (reg-set 'exp-val (listval (cdr (expval->listval exp-val))))
           (apply-cont))
         (is-empty-exp-cont
           (next-cont)
@@ -643,4 +647,18 @@
                                     else *(n, (fact -(n, 1)))
                    in (fact 4)"
                    24)
+
+   
+   (test-prog-equalv "let foo = proc(x) x
+                      in let x = list(1 2 3 4)
+                         in cons((foo car(x)),
+                                 (foo cdr(x)))"
+                      '(1 2 3 4))
+   (test-prog-eqv "let x = 1
+                   in if zero?(let x = 0
+                            in x)
+                      then x
+                      else -(x,2)"
+
+                   1)
   )

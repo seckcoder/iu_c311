@@ -1,7 +1,21 @@
-based on letrec-lang
+based on continuation
 
-eopl 3.9 3.10
-     5.5 5.6 (list support)
-        I used a strategy that looks different from the solution provided in book.
-        But the essence is just the same
-     5.9 (implicit reference support)
+Unlike the book has claimed, the process registerization
+is actually not easy because the introduction of global shared
+variable, which makes the program hard to maintain.
+
+
+This is buggy implementation of registerization. One of the most complicated
+part the update of environment.
+
+For example, for the following test case
+
+    let x = 1
+    in if zero?(let x = 0 in x)
+       then x
+       else -(x,2)
+
+After you enter into if-test-cont, you should restore the
+original environment, otherwise the return result of
+the above program will be 0 since you are inheriting 
+the environment after the evaluation if-test expression.
