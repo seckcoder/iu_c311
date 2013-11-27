@@ -205,7 +205,7 @@
         (println "End of computation")
         (set! sigend (+ sigend 1))
         exp-val)
-      (zero-cont
+      (zero1-cont
         (next-cont)
         (apply-cont next-cont (boolval (zero? (expval->numval exp-val)))))
       (let-exp-cont
