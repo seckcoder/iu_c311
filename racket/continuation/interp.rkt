@@ -133,40 +133,40 @@
 (define-datatype
   continuation continuation?
   (end-cont)
-  (zero-cont
+  (zero1-cont
     (cont continuation?))
-  (let-cont
+  (let-exp-cont
     (var symbol?)
     (env environment?)
     (body expression?)
     (cont continuation?))
-  (diff-subtractor-cont
+  (diff1-cont
     (subtractor-exp expression?)
     (env environment?)
     (cont continuation?))
-  (diff-cont
+  (diff2-cont
     ; todo (expval support)
     (minuend-val expval?)
     (env environment?)
     (cont continuation?))
-  (if-cont
+  (if-test-cont
     (sbj-exp expression?)
     (else-exp expression?)
     (env environment?)
     (cont continuation?))
-  (call-exp-arg-cont
+  (rator-cont
     (arg-exp expression?)
     (env environment?)
     (cont continuation?))
-  (call-exp-cont
+  (rand-cont
     (proc proc?)
     (env environment?)
     (cont continuation?))
-  (cons-exp-cont1
+  (cons1-cont
     (cdrv-exp expression?)
     (env environment?)
     (cont continuation?))
-  (cons-exp-cont2
+  (cons2-cont
     (carv expval?)
     (env environment?)
     (cont continuation?))
@@ -207,36 +207,36 @@
       (zero-cont
         (next-cont)
         (apply-cont next-cont (boolval (zero? (expval->numval exp-val)))))
-      (let-cont
+      (let-exp-cont
         (var env body next-cont)
         (let* ((ref (newref exp-val))
                (new-env (extend-env var
                                    ref
                                    env)))
           (interp-exp/k body new-env next-cont)))
-      (diff-subtractor-cont
+      (diff1-cont
         (subtractor-exp env next-cont)
         (interp-exp/k subtractor-exp env
-                      (diff-cont exp-val env next-cont)))
-      (diff-cont
+                      (diff2-cont exp-val env next-cont)))
+      (diff2-cont
         (minuend-val env next-cont)
         (apply-cont next-cont (numval (- (expval->numval minuend-val)
                                          (expval->numval exp-val)))))
-      (if-cont
+      (if-test-cont
         (sbj-exp else-exp env next-cont)
         (if (expval->boolval exp-val)
           (interp-exp/k sbj-exp env next-cont)
           (interp-exp/k else-exp env next-cont)))
-      (call-exp-arg-cont
+      (rator-cont
         (arg-exp env next-cont)
-        (interp-exp/k arg-exp env (call-exp-cont (expval->procval exp-val) env next-cont)))
-      (call-exp-cont
+        (interp-exp/k arg-exp env (rand-cont (expval->procval exp-val) env next-cont)))
+      (rand-cont
         (proc env next-cont)
         (apply-proc proc exp-val next-cont))
-      (cons-exp-cont1
+      (cons1-cont
         (cdrv-exp env next-cont)
-        (interp-exp/k cdrv-exp env (cons-exp-cont2 exp-val env next-cont)))
-      (cons-exp-cont2
+        (interp-exp/k cdrv-exp env (cons2-cont exp-val env next-cont)))
+      (cons2-cont
         (carv env next-cont)
         (apply-cont next-cont (listval (cons carv
                                              (expval->listval exp-val)))))
@@ -369,25 +369,25 @@
         (apply-cont cont (numval num)))
       (diff-exp
         (minuend subtractor)
-        (interp-exp/k minuend env (diff-subtractor-cont subtractor env cont)))
+        (interp-exp/k minuend env (diff1-cont subtractor env cont)))
       (zero?-exp
         (exp)
-        (interp-exp/k exp env (zero-cont cont)))
+        (interp-exp/k exp env (zero1-cont cont)))
       (if-exp
         (predicate sbj-exp else-exp)
-        (interp-exp/k predicate env (if-cont sbj-exp else-exp env cont)))
+        (interp-exp/k predicate env (if-test-cont sbj-exp else-exp env cont)))
       (var-exp
         (var)
         (apply-cont cont (deref (apply-env env var))))
       (let-exp
         (var exp1 body)
-        (interp-exp/k exp1 env (let-cont var env body cont)))
+        (interp-exp/k exp1 env (let-exp-cont var env body cont)))
       (proc-exp
         (var body)
         (apply-cont cont (procval (closure var body env))))
       (call-exp
         (exp1 exp2)
-        (interp-exp/k exp1 env (call-exp-arg-cont exp2 env cont)))
+        (interp-exp/k exp1 env (rator-cont exp2 env cont)))
       (letrec-exp
         (p-name b-var b-body letrec-body)
         (let ((new-env (extend-env-recursively p-name
@@ -397,7 +397,7 @@
           (interp-exp/k letrec-body new-env cont)))
       (cons-exp
         (carv-exp cdrv-exp)
-        (interp-exp/k carv-exp env (cons-exp-cont1 cdrv-exp env cont)))
+        (interp-exp/k carv-exp env (cons1-cont cdrv-exp env cont)))
       (car-exp
         (lst-exp)
         (interp-exp/k lst-exp env (car-exp-cont cont)))
