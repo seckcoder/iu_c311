@@ -114,12 +114,11 @@
 
 
 (define apply-excep
-  (lambda (val)
+  (lambda (except-id)
     ; we now just throw numbers
-    (let ((except-id (expval->numval val)))
-      (match (lookup-exception-handler! except-id)
-        [(list id catch-body env cont)
-         (interp-exp/k catch-body env cont)]))))
+    (match (lookup-exception-handler! except-id)
+      [(list id catch-body env cont)
+       (interp-exp/k catch-body env cont)])))
 
 ; environment
 
@@ -224,6 +223,8 @@
   (raise-cont)
   (try-normal-cont
     (cont continuation?))
+  (divide-cont
+    (cont continuation?))
   )
 
 (define sigend 0)
@@ -299,11 +300,18 @@
                                          (expval->numval exp-val)))))
       (raise-cont
         ()
-        (apply-excep exp-val))
+        (apply-excep (expval->numval exp-val)))
       (try-normal-cont
         (cont)
         (exception-handler-pop!)
         (apply-cont cont exp-val))
+      (divide-cont
+        (cont)
+        (match (expval->normalval exp-val)
+          [(list v1 v2)
+           (if (= v2 0)
+             (apply-excep 2)
+             (apply-cont cont (numval (/ v1 v2))))]))
       )))
 
 ; grammer
@@ -380,6 +388,9 @@
     (expression
       ("raise" expression)
       raise-exp)
+    (expression
+      ("/(" expression "," expression ")")
+      divide-exp)
     ))
 
 (define list-the-datatypes
@@ -402,6 +413,26 @@
                                     accum
                                     env
                                     cont)))))
+(define interp-multi-exps-return-list/k
+  (lambda (exps env cont)
+    (interp-exps/k exps
+                   (lambda (val accum)
+                     (listval (append (expval->listval accum)
+                                      (list val))))
+                   (listval '())
+                   env
+                   cont)))
+
+(define interp-multi-exps-return-last/k
+  (lambda (exps env cont)
+    (if (null? exps)
+      (apply-excep 1)
+      (interp-exps/k exps
+                     (lambda (val accum)
+                       val)
+                     (listval '())
+                     env
+                     cont))))
 
 (define interp-exp/k
   (lambda (exp env cont)
@@ -456,21 +487,10 @@
         (interp-exp/k lst-exp env (is-empty-exp-cont cont)))
       (list-exp
         (exps)
-        (interp-exps/k exps
-                       (lambda (val accum)
-                         (listval (append (expval->listval accum)
-                                          (list val))))
-                       (listval '())
-                       env
-                       cont))
+        (interp-multi-exps-return-list/k exps env cont))
       (compound-exp
         (exps)
-        (interp-exps/k exps
-                       (lambda (val accum)
-                         val)
-                       (listval '())
-                       env
-                       cont))
+        (interp-multi-exps-return-last/k exps env cont))
       (set-exp
         (var exp)
         (interp-exp/k exp
@@ -486,7 +506,13 @@
         (try-body except-id catch-body)
         (exception-handler-push! (make-exception-handler except-id catch-body env cont))
         (interp-exp/k try-body env (try-normal-cont cont)))
+      (divide-exp
+        (exp1 exp2)
+        (interp-multi-exps-return-list/k (list exp1 exp2)
+                                         env
+                                         (divide-cont cont)))
       )))
+
 
 (define initial-env (empty-env))
 (define interp
@@ -590,5 +616,7 @@
                                }
                        in (foo 4)"
                   4)
-                      
+  ; test divide exception by replace 1 with 0
+  (test-prog-eqv "/(2,1)"
+                 1)
   )
