@@ -579,5 +579,16 @@
                                }
                        in (foo 4)"
                   2)
-                   
+  (test-prog-eqv "let y = 1
+                   in let foo = proc(x)
+                               try {
+                                  set y = 2;
+                                  set y = 3;
+                                  x;
+                               } catch (88) {
+                                  y;
+                               }
+                       in (foo 4)"
+                  4)
+                      
   )
