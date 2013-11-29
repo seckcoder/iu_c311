@@ -34,9 +34,11 @@
 (define-syntax check
   (syntax-rules ()
     [(_ pred a b)
-     (if (not (pred a b))
-       (eopl:error 'check "~s:~s not ~s ~s:~s" `a a `pred `b b)
-       'ok)]))
+     (let ((va a)
+           (vb b))
+       (if (not (pred va vb))
+         (eopl:error 'check "~s:~s not ~s ~s:~s" `a va `pred `b vb)
+         'ok))]))
 
 (define println
   (lambda args

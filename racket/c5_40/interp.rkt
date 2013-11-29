@@ -22,7 +22,10 @@
   (listval
     (list list?))
   (procval
-    (proc proc?)))
+    (proc proc?))
+  (contval
+    (cont continuation?))
+  )
 
 (define typeof
   (lambda (val)
@@ -39,6 +42,9 @@
       (procval
         (proc)
         'proc)
+      (contval
+        (cont)
+        cont)
       )))
 
 (define expval->normalval
@@ -55,7 +61,10 @@
         (map expval->normalval lst))
       (procval
         (proc)
-        proc))))
+        proc)
+      (else
+        (eopl:error 'expval->normalval "not supported:~s" val))
+      )))
 
 (define expval->listval
   (lambda (val)
@@ -92,6 +101,15 @@
       (else
         (eopl:error 'expval->procval "~s is not a proc" val)))))
 
+(define expval->contval
+  (lambda (val)
+    (cases expval val
+      (contval
+        (cont)
+        cont)
+      (else
+        (eopl:error 'expval->contval "~s is not a continuation" val)))))
+
 (define-datatype
   proc proc?
   (closure
@@ -113,6 +131,7 @@
       (else (eopl:error 'apply-proc "invalid procedure value:" proc1)))))
 
 
+
 (define apply-excep
   (lambda (e-val saved-cont)
     (cases expval e-val
@@ -124,9 +143,13 @@
               ()
               (eopl:error 'exception "cannot handle exception:~s" e-val))
             (try-cont
-              (except-id catch-body env try-saved-cont)
+              (except-id catch-body cont-var env try-saved-cont)
               (if (= except-id searched-id)
-                (interp-exp/k catch-body env saved-cont)
+                (begin
+                  (let ((new-env (extend-env cont-var
+                                             (newref (contval saved-cont))
+                                             env)))
+                    (interp-exp/k catch-body new-env try-saved-cont)))
                 (loop try-saved-cont)))
             (zero1-cont
               (saved-cont)
@@ -179,6 +202,9 @@
             (raise-cont
               (saved-cont)
               (eopl:error 'apply-excep "cannot raise an exception in a raise expression"))
+            (resume-cont
+              ()
+              (eopl:error 'apply-excep "cannot raise an exception in a resume expression"))
             )))
       (else
         (eopl:error 'apply-excep "only support raise number as exception"))
@@ -289,8 +315,10 @@
   (try-cont
     (except-id number?)
     (catch-body expression?)
+    (cont-var symbol?)
     (env environment?)
     (cont continuation?))
+  (resume-cont)
   )
 
 (define sigend 0)
@@ -368,8 +396,14 @@
         (saved-cont)
         (apply-excep exp-val saved-cont))
       (try-cont
-        (except-id catch-body env cont)
+        (except-id catch-body cont-var env cont)
         (apply-cont cont exp-val))
+      (resume-cont
+        ()
+        (match (expval->listval exp-val)
+          [(list cont-val resume-exp-val)
+           (apply-cont (expval->contval cont-val)
+                       resume-exp-val)]))
       )))
 
 ; grammer
@@ -441,11 +475,14 @@
       ("*(" expression "," expression ")")
       mult-exp)
     (expression
-      ("try" expression "catch" "(" number ")" expression)
+      ("try" expression "catch" "(" number identifier ")" expression)
       try-exp)
     (expression
       ("raise" expression)
       raise-exp)
+    (expression
+      ("resume" expression expression)
+      resume-exp)
     ))
 
 (define list-the-datatypes
@@ -456,6 +493,17 @@
 
 (define scan&parse
   (sllgen:make-string-parser scanner-spec-a grammar-al))
+
+(define interp-multi-exps-return-list/k
+  (lambda (exps env cont)
+    (interp-exps/k exps
+                   (lambda (val accum)
+                     (listval (append (expval->listval accum)
+                                      (list val))))
+                   (listval '())
+                   env
+                   cont)))
+
 
 (define interp-exps/k
   (lambda (exps accum-op accum env cont)
@@ -549,9 +597,14 @@
         (exp)
         (interp-exp/k exp env (raise-cont cont)))
       (try-exp
-        (try-body except-id catch-body)
+        (try-body except-id cont-var catch-body)
         ; (exception-handler-push! (make-exception-handler except-id catch-body env cont))
-        (interp-exp/k try-body env (try-cont except-id catch-body env cont)))
+        (interp-exp/k try-body env (try-cont except-id catch-body cont-var env cont)))
+      (resume-exp
+        (var-cont-exp resume-val-exp)
+        (interp-multi-exps-return-list/k (list var-cont-exp resume-val-exp)
+                                         env
+                                         (resume-cont)))
       )))
 
 (define initial-env (empty-env))
@@ -638,10 +691,19 @@
                                try {
                                   set y = 2;
                                   raise 88;
-                                  set y = 3;
+                               } catch (88 cont) {
+                                  resume cont 0;
+                               }
+                       in (foo 4)"
+                  0)
+  (test-prog-eqv "let y = 1
+                   in let foo = proc(x)
+                               try {
+                                  set y = 2;
+                                  raise 88;
                                   x;
-                               } catch (88) {
-                                  y;
+                               } catch (88 cont) {
+                                  resume cont 0;
                                }
                        in (foo 4)"
                   4)
@@ -651,7 +713,7 @@
                                   set y = 2;
                                   set y = 3;
                                   x;
-                               } catch (88) {
+                               } catch (88 cont) {
                                   y;
                                }
                        in (foo 4)"

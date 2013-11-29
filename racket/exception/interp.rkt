@@ -618,5 +618,5 @@
                   4)
   ; test divide exception by replace 1 with 0
   (test-prog-eqv "/(2,1)"
-                 1)
+                 2)
   )
