@@ -481,6 +481,8 @@
       ("raise" expression)
       raise-exp)
     (expression
+      ; the first expression the continuation to resume
+      ; the second expression is return value for the resumed point of raise
       ("resume" expression expression)
       resume-exp)
     ))
