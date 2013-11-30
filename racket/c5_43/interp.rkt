@@ -720,4 +720,12 @@
   (test-prog-eqv "-(3, letcc k
                        in (k 2))"
                   1)
+
+  ; test call/cc 5.44
+  (test-prog-eqv "let callcc = proc(p)
+                                letcc k
+                                in (p k)
+                  in -(3, (callcc proc(k)
+                                  (k 2)))"
+                 1)
   )

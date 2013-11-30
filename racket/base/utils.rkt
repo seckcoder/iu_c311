@@ -8,6 +8,10 @@
          check
          println
          foldl
+         while
+         add1
+         sub1
+         caddddr
          )
 
 (define anything?
@@ -50,3 +54,17 @@
     (if (= n 0)
       '()
       (cons v (list-n (- n 1) v)))))
+
+(define-syntax while
+  (syntax-rules ()
+    [(_ pred body body* ...)
+     (let loop ((v 'unintialized))
+       (if pred
+         (let ((v (let ()
+                    body body* ...)))
+           (loop v))
+         v))]))
+
+(define caddddr
+  (lambda (lst)
+    (car (cddddr lst))))
