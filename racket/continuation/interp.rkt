@@ -245,7 +245,7 @@
         (apply-cont next-cont (car (expval->listval exp-val))))
       (cdr-exp-cont
         (next-cont)
-        (apply-cont next-cont (cdr (expval->listval exp-val))))
+        (apply-cont next-cont (listval (cdr (expval->listval exp-val)))))
       (is-empty-exp-cont
         (next-cont)
         (apply-cont next-cont (boolval (null? (expval->listval exp-val)))))
