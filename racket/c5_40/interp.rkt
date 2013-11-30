@@ -205,6 +205,9 @@
             (resume-cont
               ()
               (eopl:error 'apply-excep "cannot raise an exception in a resume expression"))
+            (throw-cont
+              (saved-cont)
+              (eopl:error 'apply-excep "cannot raise an exception in a throw expression"))
             )))
       (else
         (eopl:error 'apply-excep "only support raise number as exception"))
@@ -319,6 +322,8 @@
     (env environment?)
     (cont continuation?))
   (resume-cont)
+  (throw-cont
+    (cont continuation?))
   )
 
 (define sigend 0)
@@ -404,6 +409,12 @@
           [(list cont-val resume-exp-val)
            (apply-cont (expval->contval cont-val)
                        resume-exp-val)]))
+      (throw-cont
+        (saved-cont)
+        (match (expval->listval exp-val)
+          [(list exp-val1 cont-val)
+           (apply-cont (expval->contval cont-val)
+                       exp-val1)]))
       )))
 
 ; grammer
@@ -485,6 +496,12 @@
       ; the second expression is return value for the resumed point of raise
       ("resume" expression expression)
       resume-exp)
+    (expression
+      ("letcc" identifier "in" expression)
+      letcc-exp)
+    (expression
+      ("throw" expression "to" expression)
+      throw-exp)
     ))
 
 (define list-the-datatypes
@@ -607,6 +624,18 @@
         (interp-multi-exps-return-list/k (list var-cont-exp resume-val-exp)
                                          env
                                          (resume-cont)))
+      (letcc-exp
+        (var body)
+        (interp-exp/k body
+                      (extend-env var
+                                  (newref (contval cont))
+                                  env)
+                      cont))
+      (throw-exp
+        (exp1 exp2)
+        (interp-multi-exps-return-list/k (list exp1 exp2)
+                                         env
+                                         (throw-cont cont)))
       )))
 
 (define initial-env (empty-env))
@@ -720,4 +749,8 @@
                                }
                        in (foo 4)"
                   4)
+  ; 5.42
+  (test-prog-eqv "-(3, letcc cont
+                       in throw 2 to cont)"
+                  1)
   )
