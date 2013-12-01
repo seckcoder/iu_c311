@@ -66,9 +66,6 @@
                    in (fact 4)"
                    24)
 
-   (test-prog-eqv "print(2)"
-                  2)
-
    (test-prog-eqv "letrec
                     noisy (l) = if null?(l)
                                 then 0

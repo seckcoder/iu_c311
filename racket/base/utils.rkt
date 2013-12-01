@@ -12,6 +12,7 @@
          add1
          sub1
          caddddr
+         gensym
          )
 
 (define anything?

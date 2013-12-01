@@ -12,6 +12,7 @@
 
 (define ready-queue (make-queue))
 
+
 (define apply-proc
   (lambda (proc1 arg cont)
     (cases
@@ -30,14 +31,19 @@
     (cases continuation cont
       (end-cont
         ()
+        ;(println "End of computation for:~s" (thread-name (current-thread)))
         (set-thread-result! (current-thread) exp-val)
         (if (queue-empty? ready-queue)
           ; all actions finished
-          exp-val
+          (begin
+            (println "All actions finished")
+            exp-val)
           ; start the next thread, current thread is dropped
           (begin
             (set-current-thread! (dequeue! ready-queue))
-            (thread-step (current-thread)))))
+            ;(println "replace current thread with:~s" (thread-name (current-thread)))
+            (thread-step (current-thread))
+            exp-val)))
       (zero1-cont
         (saved-cont)
         (apply-cont saved-cont (boolval (zero? (expval->numval exp-val)))))
@@ -137,8 +143,13 @@
              (set-thread-cont! cur-thd cont)
              (enqueue! ready-queue cur-thd)
              (set-current-thread! (dequeue! ready-queue))
+             #|(println "thread:~s expired; replace with:~s"
+                      (thread-name cur-thd)
+                      (thread-name (current-thread)))|#
              (thread-step (current-thread)))
             (else
+              ;(println "thread:~s time:~s" (thread-name cur-thd) (thread-time cur-thd))
+              ; (display cont)(newline)
               (thread-inc-time! cur-thd)
               (cases
                 expression exp
@@ -238,6 +249,7 @@
 (define run
   (lambda ()
     ; currently, we simply wait for all threads to finish.
+    (set-current-thread! (dequeue! ready-queue))
     (thread-step (current-thread))))
 
 (define interp
@@ -248,6 +260,5 @@
         (exp)
         (initialize-store!)
         (let ((main-thread (spawn-thread! exp (empty-env) (end-cont))))
-          (set-current-thread! main-thread)
           (run)
           (expval->normalval (thread-result main-thread)))))))

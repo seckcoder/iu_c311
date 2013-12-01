@@ -4,7 +4,7 @@
 
 (provide (all-defined))
 
-(define max-time-slice-num 3)
+(define max-time-slice-num 30)
 (define the-current-thread 'uninitialized)
 (define current-thread
   (lambda ()
@@ -19,7 +19,8 @@
             env
             cont
             initial-time
-            result)))
+            result
+            (gensym))))
 
 (define make-new-thread
   (lambda (exp env cont)
@@ -69,6 +70,10 @@
 (define set-thread-result!
   (lambda (thd new-result)
     (vector-set! thd 4 new-result)))
+
+(define thread-name
+  (lambda (thd)
+    (vector-ref thd 5)))
 
 (define thread?
   (lambda (v)
