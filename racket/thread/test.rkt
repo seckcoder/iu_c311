@@ -66,6 +66,7 @@
                    in (fact 4)"
                    24)
 
+   ; non-cooperating threads
    (test-prog-eqv "letrec
                     noisy (l) = if null?(l)
                                 then 0
@@ -80,4 +81,29 @@
                     33;
                    }"
                   33)
+   ; producer-consumer
+   (test-prog-eqv "let buffer = 0
+                   in let producer = proc(n)
+                                      letrec
+                                        wait(k) = if zero?(k)
+                                                  then set buffer = n
+                                                  else {
+                                                    print(-(k, -200));
+                                                    (wait -(k,1));
+                                                  }
+                                      in (wait 5)
+                      in let consumer = proc(id)
+                                          letrec busywait(k) = if zero?(buffer)
+                                                               then {
+                                                                print(-(k,-100));
+                                                                (busywait -(k,-1));
+                                                               }
+                                                               else buffer
+                                          in (busywait 0)
+                         in {
+                          spawn(proc(d) (producer 44));
+                          print(300);
+                          (consumer 86);
+                         }"
+                    44)
   )
