@@ -22,7 +22,7 @@
                                    ref
                                    env)))
           (interp-exp/k body new-env cont)))
-      (else (eopl:error 'apply-proc "invalid procedure value:" proc1)))))
+      (else (eopl:error 'apply-proc "invalid procedure value:~s" proc1)))))
 
 
 (define-datatype
@@ -94,6 +94,10 @@
     (cont continuation?))
   (end-subthread-cont)
   (end-mainthread-cont)
+  (wait-cont
+    (cont continuation?))
+  (signal-cont
+    (cont continuation?))
   )
 
 (define apply-cont
@@ -187,13 +191,23 @@
               (apply-cont next-cont (threadval thd))))
           (end-subthread-cont
             ()
-            (println "End of a subthread")
             (run-next-thread))
           (end-mainthread-cont
             ()
-            (println "End of mainthread")
             (set-final-answer! exp-val)
             (run-next-thread))
+          (wait-cont
+            (saved-cont)
+            (wait-for-mutex
+              (expval->mutexval exp-val)
+              (lambda ()
+                (apply-cont saved-cont (numval 0)))))
+          (signal-cont
+            (saved-cont)
+            (signal-for-mutex
+              (expval->mutexval exp-val)
+              (lambda ()
+                (apply-cont saved-cont (numval 0)))))
           )))))
 
 (define interp-exps/k
@@ -290,6 +304,15 @@
       (spawn-exp
         (exp)
         (interp-exp/k exp env (spawn-cont cont)))
+      (mutex-exp
+        ()
+        (apply-cont cont (mutexval (make-new-mutex))))
+      (wait-exp
+        (exp)
+        (interp-exp/k exp env (wait-cont cont)))
+      (signal-exp
+        (exp)
+        (interp-exp/k exp env (signal-cont cont)))
       )))
 
 (define interp
@@ -299,6 +322,6 @@
       (a-program
         (exp)
         (initialize-store!)
-        (initialize-scheduler! 30)
+        (initialize-scheduler! 5)
         (interp-exp/k exp (empty-env) (end-mainthread-cont))
         (expval->normalval (final-answer))))))

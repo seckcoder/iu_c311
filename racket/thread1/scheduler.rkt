@@ -1,6 +1,7 @@
 #lang eopl
 
 (require "../base/utils.rkt")
+(require "ds.rkt")
 (require data/queue)
 
 (provide (all-defined))
@@ -17,6 +18,10 @@
     (set! the-max-time-slice ticks)
     (set! the-time-remaining the-max-time-slice)))
 
+(define ready-queue-size
+  (lambda ()
+    (queue-length the-ready-queue)))
+
 (define place-on-ready-queue!
   (lambda (thd)
     (enqueue! the-ready-queue thd)))
@@ -31,6 +36,7 @@
       the-final-answer
       (let ((thd (dequeue! the-ready-queue)))
         (set! the-time-remaining the-max-time-slice)
+        ; tail call
         (thread-start thd)))))
 
 (define set-final-answer!
@@ -47,3 +53,30 @@
 (define decrement-timer!
   (lambda ()
     (set! the-time-remaining (sub1 the-time-remaining))))
+
+(define wait-for-mutex
+  (lambda (mtx thd)
+    (if (closed-mutex? mtx)
+      (begin
+        (en-mutex-wait-queue! mtx thd)
+        ; tail call
+        (run-next-thread))
+      (begin
+        (close-mutex! mtx)
+        (thread-start thd)))))
+
+(define signal-for-mutex
+  (lambda (mtx thd)
+    (if (closed-mutex? mtx)
+      (begin
+        (open-mutex! mtx)
+        (if (mutex-wait-queue-empty? mtx)
+          'ok
+          (de-mutex-wait-queue! mtx
+                               (lambda (front fq)
+                                 (place-on-ready-queue! front))))
+        ; tail call
+        (thread-start thd))
+      (begin
+        ; tail call
+        (thread-start thd)))))

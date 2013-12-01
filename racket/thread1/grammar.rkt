@@ -75,6 +75,15 @@
     (expression
       ("spawn(" expression ")")
       spawn-exp)
+    (expression
+      ("mutex()")
+      mutex-exp)
+    (expression
+      ("wait(" expression ")")
+      wait-exp)
+    (expression
+      ("signal(" expression ")")
+      signal-exp)
     ))
 
 (define list-the-datatypes
