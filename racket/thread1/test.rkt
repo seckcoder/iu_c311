@@ -8,6 +8,10 @@
   (lambda (prog)
     (interp (scan&parse prog))))
 
+(define eval-prog
+  (lambda (prog)
+    (display (test-prog prog))))
+
 (define test-prog-eqv 
   (lambda (prog v)
     (check eq? (interp (scan&parse prog)) v)))
@@ -86,13 +90,13 @@
    (test-prog-eqv "let buffer = 0
                    in let producer = proc(n)
                                       letrec
-                                        wait(k) = if zero?(k)
+                                        busywait(k) = if zero?(k)
                                                   then set buffer = n
                                                   else {
                                                     print(-(k,-200));
-                                                    (wait -(k,1));
+                                                    (busywait -(k,1));
                                                   }
-                                      in (wait 5)
+                                      in (busywait 5)
                       in let consumer = proc(id)
                                           letrec busywait(k) = if zero?(buffer)
                                                                then {
@@ -107,4 +111,87 @@
                           (consumer 86);
                          }"
                     44)
+   ; a test of shared variable problem
+   (test-prog "let x = 0
+               in let incr = proc(id)
+                      proc (dummy) {
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                        set x = -(x,-1);
+                        print(id);
+                        print(x);
+                      }
+                  in {
+                    spawn((incr 100));
+                    spawn((incr 200));
+                    spawn((incr 300));
+                  }")
+      
+    (test-prog "let mtx = mutex()
+               in let x = 0
+                 in let incr = proc(id)
+                        proc (dummy) {
+                          wait(mtx);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          set x = -(x,-1);
+                          print(id);
+                          print(x);
+                          signal(mtx);
+                        }
+                    in {
+                      spawn((incr 100));
+                      spawn((incr 200));
+                      spawn((incr 300));
+                    }")
   )

@@ -27,7 +27,6 @@
 
 (define-datatype
   continuation continuation?
-  (end-cont)
   (zero1-cont
     (cont continuation?))
   (let-exp-cont
@@ -111,10 +110,6 @@
       (begin
         (decrement-timer!)
         (cases continuation cont
-          (end-cont
-            ()
-            (println "End of computation")
-            exp-val)
           (zero1-cont
             (next-cont)
             (apply-cont next-cont (boolval (zero? (expval->numval exp-val)))))

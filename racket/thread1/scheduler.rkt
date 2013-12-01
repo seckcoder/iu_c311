@@ -65,18 +65,29 @@
         (close-mutex! mtx)
         (thread-start thd)))))
 
+; this implementation is wrong. After we dequeue a mutex
+; from the wait queue, we should lock the mutex immediately
+; since the mutex is already locked!
+#|(define signal-for-mutex
+  (lambda (mtx thd)
+    (println "signal for mutex:~s" (closed-mutex? mtx))
+    (if (closed-mutex? mtx)
+      (open-mutex! mtx)
+      'ok)
+    (if (mutex-wait-queue-empty? mtx)
+      'ok
+      (de-mutex-wait-queue! mtx
+                            (lambda (front fq)
+                              (place-on-ready-queue! front))))
+    ; tail call
+    (thread-start thd)))|#
+
 (define signal-for-mutex
   (lambda (mtx thd)
     (if (closed-mutex? mtx)
-      (begin
+      (if (mutex-wait-queue-empty? mtx)
         (open-mutex! mtx)
-        (if (mutex-wait-queue-empty? mtx)
-          'ok
-          (de-mutex-wait-queue! mtx
-                               (lambda (front fq)
-                                 (place-on-ready-queue! front))))
-        ; tail call
-        (thread-start thd))
-      (begin
-        ; tail call
-        (thread-start thd)))))
+        (de-mutex-wait-queue! mtx
+                              (lambda (front fq)
+                                (place-on-ready-queue! front)))))
+    (thread-start thd)))
