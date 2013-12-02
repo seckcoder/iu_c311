@@ -238,4 +238,46 @@
                       spawn((incr 200));
                       spawn((incr 300));
                     }")
-  )
+  ; 5.52; There are better methods to be this. But it needs modify 
+  ; the interpreter
+  (test-prog-eqv
+"
+let x = 0
+in let threadnum = 3
+   in let threadcount = 0
+        in let incmtx = mutex()
+             in let mainmtx = mutex()
+                 in let incrx = proc(id)
+                                  proc(dummy) {
+                                    wait(incmtx);
+                                    set x = -(x,-1);
+                                    set x = -(x,-1);
+                                    set x = -(x,-1);
+                                    set x = -(x,-1);
+                                    set x = -(x,-1);
+                                    set x = -(x,-1);
+                                    set x = -(x,-1);
+                                    set x = -(x,-1);
+                                    set x = -(x,-1);
+                                    set x = -(x,-1);
+                                    set threadcount = -(threadcount,-1);
+                                    print(id);
+                                    print(x);
+                                    print(threadcount);
+                                    signal(incmtx);
+                                    if zero?(-(threadcount,threadnum))
+                                    then signal(mainmtx)
+                                    else x;
+                                  }
+                    in {
+                      wait(mainmtx);
+                      print(111111111);
+                      spawn((incrx 100));
+                      spawn((incrx 200));
+                      spawn((incrx 300));
+                      wait(mainmtx);
+                      signal(mainmtx);
+                      print(111111111);
+                      x;
+                    }"
+  30)
