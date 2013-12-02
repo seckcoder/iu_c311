@@ -1,6 +1,6 @@
 #lang eopl
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 (require "store1.rkt")
 

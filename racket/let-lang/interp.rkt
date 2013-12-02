@@ -5,7 +5,7 @@
 (require "../base/utils.rkt")
 (require racket/file)
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 ; expval := Int | Bool
 (define-datatype

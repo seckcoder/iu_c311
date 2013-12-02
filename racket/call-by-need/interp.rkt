@@ -6,7 +6,7 @@
 (require "../base/utils.rkt")
 (require "store1.rkt")
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 (define use-memoization #t)
 ; expval := Int | Bool | Proc

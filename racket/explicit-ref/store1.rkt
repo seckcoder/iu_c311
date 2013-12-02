@@ -4,7 +4,7 @@
 
 (require "../base/utils.rkt")
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 (define empty-store
   (lambda ()

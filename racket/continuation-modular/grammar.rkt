@@ -1,6 +1,6 @@
 #lang eopl
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 (define scanner-spec-a
   '((white-sp (whitespace) skip)

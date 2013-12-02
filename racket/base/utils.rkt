@@ -13,6 +13,8 @@
          sub1
          caddddr
          gensym
+         find
+         filter
          )
 
 (define anything?
@@ -69,3 +71,12 @@
 (define caddddr
   (lambda (lst)
     (car (cddddr lst))))
+
+(define find
+  (lambda (handle lst)
+    (let loop ((lst lst)
+               (idx 0))
+      (cond ((null? lst) (list #f '() idx))
+            ((handle (car lst)) (list #t (car lst) idx))
+            (else
+              (loop (cdr lst) (add1 idx)))))))

@@ -7,7 +7,7 @@
 (require "../base/utils.rkt")
 (require "store.rkt")
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 ; expval := Int | Bool | Proc
 ; during the implemention, I find this datatype actually

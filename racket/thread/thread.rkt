@@ -2,7 +2,7 @@
 
 (require "../base/utils.rkt")
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 (define max-time-slice-num 30)
 (define the-current-thread 'uninitialized)

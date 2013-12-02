@@ -8,7 +8,7 @@
 (require racket/file)
 (require racket/match)
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 ; expval := Int | Bool | Proc
 ; during the implemention, I find this datatype actually

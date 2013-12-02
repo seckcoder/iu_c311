@@ -8,7 +8,7 @@
 (require "store.rkt")
 (require "../base/utils.rkt")
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 (define-datatype
   expval expval?

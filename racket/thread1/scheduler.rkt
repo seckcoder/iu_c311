@@ -4,7 +4,7 @@
 (require "ds.rkt")
 (require data/queue)
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 (define the-ready-queue 'uninitialized)
 (define the-final-answer 'uninitialized)

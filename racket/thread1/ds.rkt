@@ -4,7 +4,7 @@
 (require "../base/queue.rkt")
 (require "../base/utils.rkt")
 
-(provide (all-defined))
+(provide (all-defined-out))
 ; expval := Int | Bool | Proc
 ; during the implemention, I find this datatype actually
 ; useless...

@@ -7,7 +7,7 @@
 (require "register.rkt")
 (require racket/file)
 
-(provide (all-defined))
+(provide (all-defined-out))
 
 
 ; expval := Int | Bool | Proc
