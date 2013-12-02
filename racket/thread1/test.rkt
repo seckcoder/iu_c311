@@ -111,6 +111,50 @@
                           (consumer 86);
                          }"
                     44)
+   
+   ; 5.51 producer-consumer without busy-wait.
+   (test-prog-eqv 
+"
+   let buffer = 0 
+   in let mtx = mutex()
+      in let producer = proc(n) {
+                          wait(mtx);
+                          letrec
+                            busywait(k) = if zero?(k)
+                                           then  {
+                                              set buffer = n;
+                                              signal(mtx);
+                                           } else {
+                                              print(-(k, -200));
+                                              (busywait -(k,1));
+                                           }
+                          in (busywait 5);
+                       }
+         in let consumer = proc(id) 
+                            letrec sleepwait(k) = if zero?(buffer)
+                                                  then {
+                                                    print(-(k,-100));
+                                                    wait(mtx);
+                                                    % keep releasing the mutex
+                                                    % if the producer hasn't gotten it. 
+                                                    if zero?(buffer)
+                                                    then {
+                                                      signal(mtx);
+                                                      (sleepwait -(k,-1));
+                                                    } else {
+                                                      signal(mtx);
+                                                      buffer;
+                                                    };
+                                                  } else buffer
+                             in (sleepwait 0)
+             in {
+              spawn(proc (d) (producer 44));
+              print(300);
+              (consumer 86);
+             }
+"
+   44)
+                            
    ; a test of shared variable problem
    (test-prog "let x = 0
                in let incr = proc(id)
