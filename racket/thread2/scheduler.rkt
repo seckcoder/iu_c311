@@ -13,6 +13,8 @@
 (define the-final-answer 'uninitialized)
 (define the-max-time-slice 'uninitialized)
 (define the-time-remaining 'uninitialized)
+(define the-blocked-queue 'uninitialized)
+(define the-mail-boxes 'uninitialized)
 
 (define initialize-scheduler!
   (lambda (ticks)
@@ -22,7 +24,9 @@
     (set! the-time-remaining the-max-time-slice)
     (set-initial-thread-id! 0)
     (set-current-thread-id! 0) ; 0 is the thread id of the main thread
-    (set-mutexes! '())
+    (set-mutex-queue! (make-queue))
+    (set! the-blocked-queue (make-queue))
+    (set! the-mail-boxes (make-hasheq))
     ))
 
 (define place-on-ready-queue!
@@ -100,30 +104,73 @@
   (lambda (th-id)
     (let ((thid-eq-handle (lambda (thd)
                             (= (thread-id thd)
-                               th-id)))
-          (thid-not-eq-handle (lambda (thd)
-                                (not (= (thread-id thd)
-                                        th-id)))))
-      (match (queue-find thid-eq-handle the-ready-queue)
-        [(list finded? thd rest ...)
-         (println "finded in reaady queue:~s" finded?)
-         (if finded?
-           (begin
-             (queue-filter! thid-not-eq-handle the-ready-queue)
+                               th-id))))
+      (println "here:~s" th-id)
+      (cond ((queue-find-and-remove! thid-eq-handle
+                                     the-ready-queue)
+             (println "find in ready queue")
              #t)
-           (match (find (lambda (mtx)
-                          (let* ((wait-queue-ref (mutex-wait-queue-ref mtx))
-                                (wait-queue (deref wait-queue-ref)))
-                            (match (fq-find thid-eq-handle wait-queue)
-                              [(list finded? rest ...)
-                               (if finded?
-                                 (begin
-                                   (setref! wait-queue-ref
-                                            (fq-filter thid-not-eq-handle
-                                                       wait-queue))
-                                   #t)
-                                 #f)])))
-                        (get-mutexes))
-             [(list finded? rest ...)
-              (println "finded in mutex queue:~s" finded?)
-              finded?]))]))))
+             ; find in blocked queue
+            ((queue-find-and-remove! thid-eq-handle
+                                    the-blocked-queue)
+             (println "find in blocked queue")
+             #t)
+             ; find in all mutexes
+            ((match (queue-find (lambda (mtx)
+                                  (let* ((wait-queue-ref (mutex-wait-queue-ref mtx))
+                                         (wait-queue (deref wait-queue-ref)))
+                                    (match (fq-find thid-eq-handle wait-queue)
+                                      [(list finded? rest ...)
+                                       (println "there")
+                                       (if finded?
+                                         (begin
+                                           (setref! wait-queue-ref
+                                                    (fq-filter (lambda (v)
+                                                                 (not (thid-eq-handle v)))
+                                                               wait-queue))
+                                           #t)
+                                         #f)])))
+                                (get-mutex-queue))
+               [(list finded? rest ...) finded?])
+             (println "find in wait queue")
+             #t)
+            (else
+              (println "not found")
+              #f)
+           )
+      )))
+
+(define partial-thread-start
+  (lambda (partial-thd exp-val)
+    ((cadr partial-thd) exp-val)))
+
+(define send-msg
+  (lambda (to-th-id msg)
+    (println "thread:~s send ~s a msg:~s" (current-thread-id) to-th-id msg)
+    (match (queue-find
+          (lambda (partial-thd)
+            (= to-th-id (thread-id partial-thd)))
+          the-blocked-queue)
+      [(list finded? partial-thd rest ...)
+       (if finded?
+         (begin
+           (queue-filter!
+             (lambda (partial-thd)
+               (not (= to-th-id (thread-id partial-thd))))
+             the-blocked-queue)
+           (place-on-ready-queue! (remake-thread
+                                    (lambda ()
+                                      (partial-thread-start partial-thd msg))))
+           )
+         (let ((mbox (hash-ref! the-mail-boxes to-th-id make-queue)))
+           (enqueue! mbox msg)))])))
+
+(define receive-msg
+  (lambda (partial-thread)
+    (let ((th-id (thread-id partial-thread)))
+      (let ((mbox (hash-ref! the-mail-boxes th-id make-queue)))
+        (if (queue-empty? mbox)
+          (begin
+            (enqueue! the-blocked-queue partial-thread)
+            (run-next-thread))
+          (partial-thread-start (dequeue! mbox)))))))

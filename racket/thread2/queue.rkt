@@ -4,12 +4,15 @@
 
 (require "store.rkt")
 (require "../base/queue.rkt")
+(require racket/match)
 
 (provide make-queue
          enqueue!
          dequeue!
          queue-filter!
          queue-empty?
+         queue?
+         queue-find-and-remove!
          queue-find)
 
 (define make-queue
@@ -70,3 +73,19 @@
 (define queue-empty?
   (lambda (q)
     ((q 'empty))))
+
+(define queue?
+  (lambda (q)
+    (procedure? q)))
+
+(define queue-find-and-remove!
+  (lambda (handle q)
+    (match (queue-find handle q)
+      [(list finded? rest ...)
+       (if finded?
+         (begin
+           (queue-filter! (lambda (v)
+                            (not (handle v)))
+                          q)
+           #t)
+         #f)])))

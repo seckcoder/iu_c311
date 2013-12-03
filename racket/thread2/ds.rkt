@@ -4,6 +4,7 @@
 (require "store.rkt")
 (require "../base/queue.rkt")
 (require "../base/utils.rkt")
+(require "queue.rkt")
 
 (provide (all-defined-out))
 ; expval := Int | Bool | Proc
@@ -56,6 +57,10 @@
     (let ((tid (gen-thread-id)))
       ;(println "create thread:~s in thread:~s" tid (current-thread-id))
       (list tid proc))))
+
+(define make-thread
+  (lambda (tid proc)
+    (list tid proc)))
 
 (define thread-start
   (lambda (thd)
@@ -224,21 +229,19 @@
     (ref-to-close reference?)
     (ref-to-wait-queue reference?)))
 
-(define the-mutexes '())
-(define get-mutexes
+(define the-mutex-queue 'uninitialized)
+(define get-mutex-queue
   (lambda ()
-    the-mutexes))
-(define set-mutexes!
+    the-mutex-queue))
+(define set-mutex-queue!
   (lambda (v)
-    (set! the-mutexes v)))
-
+    (set! the-mutex-queue v)))
 (define make-new-mutex
   (lambda ()
     (let ((mtx (a-mutex
                  (newref #f)
                  (newref (empty-fq)))))
-      (set-mutexes! (cons mtx
-                          the-mutexes))
+      (enqueue! the-mutex-queue mtx)
       mtx)))
 
 (define closed-mutex?

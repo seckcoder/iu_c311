@@ -85,6 +85,12 @@
     (expression
       ("kill(" expression ")")
       kill-exp)
+    (expression
+      ("send" expression expression)
+      send-exp)
+    (expression
+      ("receive()")
+      receive-exp)
     ))
 
 (define list-the-datatypes

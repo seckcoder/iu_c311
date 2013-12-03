@@ -7,7 +7,7 @@
 (require "grammar.rkt")
 (require "ds.rkt")
 (require "scheduler.rkt")
-(require racket/file)
+(require racket/match)
 
 (provide (all-defined-out))
 
@@ -98,6 +98,8 @@
   (signal-cont
     (cont continuation?))
   (kill-cont
+    (cont continuation?))
+  (send-cont
     (cont continuation?))
   )
 
@@ -215,6 +217,12 @@
           (kill-cont
             (saved-cont)
             (apply-cont saved-cont (boolval (kill-thread (expval->numval exp-val)))))
+          (send-cont
+            (saved-cont)
+            (match (expval->listval exp-val)
+              [(list th-id-val msg)
+               (send-msg (expval->numval th-id-val) msg)
+               (apply-cont saved-cont (numval 0))]))
           )))))
 
 (define interp-exps/k
@@ -228,6 +236,16 @@
                                     accum
                                     env
                                     cont)))))
+
+(define interp-multi-exps-return-list/k
+  (lambda (exps env cont)
+    (interp-exps/k exps
+                   (lambda (val accum)
+                     (listval (append (expval->listval accum)
+                                      (list val))))
+                   (listval '())
+                   env
+                   cont)))
 
 (define interp-exp/k
   (lambda (exp env cont)
@@ -323,6 +341,17 @@
       (kill-exp
         (exp)
         (interp-exp/k exp env (kill-cont cont)))
+      (send-exp
+        (exp1 exp2)
+        (interp-multi-exps-return-list/k
+          (list exp1 exp2)
+          env
+          (send-cont cont)))
+      (receive-exp
+        ()
+        (receive-msg (remake-thread
+                       (lambda (msg-val)
+                         (apply-cont cont msg-val)))))
       )))
 
 (define interp

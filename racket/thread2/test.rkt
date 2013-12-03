@@ -379,4 +379,34 @@ in let threadnum = 3
                             }
                                "
                       #t)
+     ; 5.55 interthread communication test case1
+     (test-prog-eqv "let x = 0
+                     in let incrx = proc(dummy) {
+                                    set x = -(x,-1);
+                                    send 0 2;
+                                  }
+                        in let tid = spawn(incrx)
+                           in {
+                              receive();
+                           }"
+                     2)
+
+     ; 5.55 inter thread communication test case2
+     ; kill a thread when it is blocked
+     (test-prog-eqv "let x = 0
+                     in let incrx = proc(dummy) {
+                                    receive();
+                                  }
+                        in let tid = spawn(incrx)
+                           in {
+                              -(1,2);
+                              -(1,2);
+                              -(1,2);
+                              -(1,2);
+                              -(1,2);
+                              -(1,2);
+                              -(1,2);
+                              kill(tid);
+                           }"
+                     #t)
 )

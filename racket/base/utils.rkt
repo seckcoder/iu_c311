@@ -15,6 +15,8 @@
          gensym
          find
          filter
+         make-hasheq
+         hash-ref!
          )
 
 (define anything?

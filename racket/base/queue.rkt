@@ -16,6 +16,10 @@
   (lambda (fq v)
     (append fq (list v))))
 
+(define fq?
+  (lambda (q)
+    (list? q)))
+
 (define fq-empty?
   (lambda (fq)
     (null? fq)))
