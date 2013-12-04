@@ -1,4 +1,5 @@
 #lang racket
+; a light-weight scheme parser based on pattern matching and algebraic data type
 
 (require racket/match)
 (require eopl/datatype)
