@@ -45,22 +45,22 @@
       )))
 
 (define interp-exp/k
-  (lambda (exp env cont)
+  (lambda (exp env)
     (cases tfexp exp
       (simple-exp->exp
         (simple)
-        (cont (value-of-simple-exp simple env)))
+        (value-of-simple-exp simple env))
       (cps-letrec-exp
         (p-names proc-exps letrec-body)
         (let ((new-env (extend-env-recursively p-names
                                                proc-exps
                                                env)))
-          (interp-exp/k letrec-body new-env cont)))
+          (interp-exp/k letrec-body new-env)))
       (cps-if-exp
         (pred body-yes body-no)
         (if (value-of-simple-exp pred env)
-          (interp-exp/k body-yes env cont)
-          (interp-exp/k body-no env cont)))
+          (interp-exp/k body-yes env)
+          (interp-exp/k body-no env)))
       (cps-compound-exp
         (simple-exps a-tfexp)
         ; If a language doesn't allow side-effect,
@@ -69,7 +69,7 @@
         (map (lambda (exp)
                (value-of-simple-exp exp env))
              simple-exps)
-        (interp-exp/k a-tfexp env cont))
+        (interp-exp/k a-tfexp env))
       (cps-call-exp
         (rator rands)
         (let ((rator-proc (value-of-simple-exp rator env))
@@ -77,23 +77,22 @@
                 (map (lambda (simple)
                        (value-of-simple-exp simple env))
                      rands)))
-        (apply-proc rator-proc rand-vals cont)))
+        (apply-proc rator-proc rand-vals)))
       )))
 
 (define apply-proc
-  (lambda (rator rands cont)
+  (lambda (rator rands)
     (cases proc rator
       (closure
         (vars body env)
         (let ((new-env (extend-env vars
                                    (newrefs rands)
                                    env)))
-          (interp-exp/k body new-env cont))))))
+          (interp-exp/k body new-env))))))
 
 (define interp
   (lambda (exp)
     (interp-exp/k exp
-                  (empty-env)
-                  (lambda (val) val))))
+                  (empty-env))))
 
 (provide (all-defined-out))
