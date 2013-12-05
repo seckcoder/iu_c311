@@ -1,9 +1,4 @@
-; expval := Int | Bool | Proc
-; during the implemention, I find this datatype actually
-; useless...
-
 #lang eopl
-
 (require "grammar.rkt")
 (require "store.rkt")
 (require "../base/utils.rkt")

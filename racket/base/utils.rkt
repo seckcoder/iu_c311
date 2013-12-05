@@ -1,6 +1,8 @@
 #lang eopl
 
 (require racket/base)
+(require racket/match)
+(require racket/list)
 
 (provide anything?
          list-of
@@ -17,6 +19,11 @@
          filter
          make-hasheq
          hash-ref!
+         mapn
+         drop-right
+         take-right
+         print
+         printf
          )
 
 (define anything?
@@ -82,3 +89,11 @@
             ((handle (car lst)) (list #t (car lst) idx))
             (else
               (loop (cdr lst) (add1 idx)))))))
+
+(define mapn
+  (lambda (handle n)
+    (let loop ((i 0))
+      (if (>= i n)
+        '()
+        (cons (handle i)
+              (loop (add1 i)))))))

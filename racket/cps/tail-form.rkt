@@ -1,94 +1,81 @@
+#lang eopl
 
-(define grammar-al
-  '((program
-      (tfexp)
-      a-program)
-    (simple-exp
-      (number)
-      const-exp)
-    (simple-exp
-      (identifier)
-      var-exp)
-    (simple-exp
-      ("-(" simple-exp "," simple-exp)
-      cps-diff-exp)
-    (simple-exp
-      ("zero?(" simple-exp ")")
-      cps-zero-exp)
-    (simple-exp
-      ("proc(" (arbno identifier) ")" tfexp)
-      cps-proc-exp)
-    (tfexp
-      (simple-exp)
-      simple-exp->exp)
-    (tfexp
-      ("let" identifier "=" simple-exp in tfexp)
-      cps-let-exp)
-    (tfexp
-      ("letrec" (arbno identifier "(" (arbno identifier) ")" "=" tfexp) "in" tfexp)
-      cps-letrec-exp)
-    (tfexp
-      ("if" simple-exp "then" tfexp "else" tfexp)
-      cps-if-exp)
-    (tfexp
-      ("(" simple-exp (arbno simple-exp) ")")
-      cps-call-exp)
-    ))
+(require "../base/utils.rkt")
+(require "ds.rkt")
+(require "store.rkt")
+(require "grammar.rkt")
+
+(define extend-env-recursively
+  (lambda (p-names proc-exps inherited-env)
+    (let* ((refs (newrefs (mapn (lambda (_) '()) (length p-names))))
+           (new-env (extend-env p-names refs inherited-env)))
+      (for-each (lambda (ref pname proc-exp)
+                  (setref! ref (value-of-simple-exp proc-exp new-env)))
+                refs
+                p-names
+                proc-exps)
+      new-env)))
 
 ; 6.11
 (define value-of-simple-exp
   (lambda (exp env)
     (cases simple-exp exp
       (const-exp
-        (num)
-        (numval num))
+        (val)
+        val)
       (var-exp
         (var)
-        (apply-env env var))
-      (cps-diff-exp
-        (exp1 exp2)
-        (numval (- (expval->numval (value-of-simple-exp exp1))
-                   (expval->numval (value-of-simple-exp exp2)))))
-      (cps-zero-exp
-        (exp)
-        (boolval (zero? (expval->numval (value-of-simple-exp exp)))))
-      (cps-proc-exp
+        (deref (apply-env env var)))
+      (atom-exp
+        (at)
+        at)
+      (list-exp
+        (exps)
+        (map (lambda (exp)
+               (value-of-simple-exp exp env))
+             exps))
+      (op-exp
+        (op exps)
+        (apply (eval op) (map (lambda (exp)
+                                (value-of-simple-exp exp env))
+                              exps)))
+      (lambda-exp
         (vars body)
-        (procval (closure vars body env)))
+        (closure vars body env))
       )))
 
 (define interp-exp/k
-  (lambda ()
-    (exp env cont)
+  (lambda (exp env cont)
     (cases tfexp exp
       (simple-exp->exp
         (simple)
-        (apply-cont cont
-                    (value-of-simple-exp simple env)))
-      (cps-let-exp
-        (var val-exp body)
-        (let ((val (value-of-simple-exp val-exp env)))
-          (let ((new-env (extend-env (list var)
-                                     (list val)
-                                     env)))
-          (interp-exp/k body new-env cont))))
+        (cont (value-of-simple-exp simple env)))
       (cps-letrec-exp
-        (p-names b-lst-of-vars b-bodies letrec-body)
-        (let ((new-env (extend-rec-env p-names
-                                       b-lst-of-vars
-                                       b-bodies)))
+        (p-names proc-exps letrec-body)
+        (let ((new-env (extend-env-recursively p-names
+                                               proc-exps
+                                               env)))
           (interp-exp/k letrec-body new-env cont)))
       (cps-if-exp
         (pred body-yes body-no)
         (if (value-of-simple-exp pred env)
           (interp-exp/k body-yes env cont)
           (interp-exp/k body-no env cont)))
+      (cps-compound-exp
+        (simple-exps a-tfexp)
+        ; If a language doesn't allow side-effect,
+        ; then what's the usage of compound expression?
+        ; Hmm, interesting...
+        (map (lambda (exp)
+               (value-of-simple-exp exp env))
+             simple-exps)
+        (interp-exp/k a-tfexp env cont))
       (cps-call-exp
         (rator rands)
-        (let ((rator-proc (expval->procval (value-of-simple-exp rator)))
+        (let ((rator-proc (value-of-simple-exp rator env))
               (rand-vals
                 (map (lambda (simple)
-                       (value-of-simple-exp simple))
+                       (value-of-simple-exp simple env))
                      rands)))
         (apply-proc rator-proc rand-vals cont)))
       )))
@@ -99,6 +86,14 @@
       (closure
         (vars body env)
         (let ((new-env (extend-env vars
-                                   rands
+                                   (newrefs rands)
                                    env)))
-          (interp-exp/k body new-nev cont))))))
+          (interp-exp/k body new-env cont))))))
+
+(define interp
+  (lambda (exp)
+    (interp-exp/k exp
+                  (empty-env)
+                  (lambda (val) val))))
+
+(provide (all-defined-out))
