@@ -120,19 +120,23 @@
   )
 
 (define (utest)
-  (define fact
-    (eval
-    (cps
-      '(lambda (n)
-         ((lambda (mk)
-            ((mk mk) n))
-          (lambda (mk)
-            (lambda (n)
-              (if (= n 0)
-                1
-                (* n ((mk mk) (- n 1))))
-              ))))
-      ))
+  (let* ((fact-prog '(lambda (n)
+                       ((lambda (mk)
+                          ((mk mk) n))
+                        (lambda (mk)
+                          (lambda (n)
+                            (if (= n 0)
+                              1
+                              (* n ((mk mk) (- n 1))))
+                            )))))
+         (fact-cps-prog (cps fact-prog))
+         (fact/k (eval fact-cps-prog))
+         (fact (lambda (n)
+                 (fact/k n (lambda (v) v)))))
+    (println "***********************cps transformation**********************")
+    (pretty-print fact-prog)
+    (println "*************************to**************************************")
+    (pretty-print fact-cps-prog)
+    (newline)
+    (println (fact 10)))
     )
-  (println (fact 5 (lambda (v) v)))
-  )
