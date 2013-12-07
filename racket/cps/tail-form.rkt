@@ -3,7 +3,7 @@
 (require "../base/utils.rkt")
 (require "ds.rkt")
 (require "store.rkt")
-(require "grammar.rkt")
+(require "parser/parser-out.rkt")
 
 (define extend-env-recursively
   (lambda (p-names proc-exps inherited-env)
@@ -20,26 +20,21 @@
 (define value-of-simple-exp
   (lambda (exp env)
     (cases simple-exp exp
-      (const-exp
+      (cps-const-exp
         (val)
         val)
-      (var-exp
+      (cps-var-exp
         (var)
         (deref (apply-env env var)))
-      (atom-exp
-        (at)
-        at)
-      (list-exp
-        (exps)
-        (map (lambda (exp)
-               (value-of-simple-exp exp env))
-             exps))
-      (op-exp
+      (cps-quote-exp
+        (sexp)
+        sexp)
+      (cps-op-exp
         (op exps)
         (apply (eval op) (map (lambda (exp)
                                 (value-of-simple-exp exp env))
                               exps)))
-      (lambda-exp
+      (cps-lambda-exp
         (vars body)
         (closure vars body env))
       )))

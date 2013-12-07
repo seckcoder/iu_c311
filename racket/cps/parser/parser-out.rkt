@@ -1,46 +1,23 @@
 #lang eopl
 
 (require racket/match)
-(require "../base/utils.rkt")
+(require "../../base/utils.rkt")
+(require "base.rkt")
 
 (provide (all-defined-out))
 
-(define atom?
-  (lambda (v)
-    (and (not (pair? v))
-         (not (null? v)))))
-         
-(define const?
-  (lambda (v)
-    (or (number? v)
-        (string? v)
-        (boolean? v))))
-
-(define op?
-  (lambda (op)
-    (memq op '(+ - * / = zero? cons car cdr list null? not
-               number? symbol? list? eq? eqv? equal? void
-               atom? void?))))
-
-(define (parse-multi exps)
-  (map (lambda (exp)
-         (parse exp))
-       exps))
-
 (define-datatype
   simple-exp simple-exp?
-  (const-exp
+  (cps-const-exp
     (cst const?))
-  (var-exp
+  (cps-var-exp
     (var symbol?))
-  (atom-exp
-    (sym atom?))
-  (list-exp
-    (vals (list-of simple-exp?)))
-  (op-exp
+  (cps-quote-exp
+    (exp sexp?))
+  (cps-op-exp
     (op op?)
     (params (list-of simple-exp?)))
-  (lambda-exp
+  (cps-lambda-exp
     (vars (list-of symbol?))
     (body tfexp?))
   )
@@ -67,27 +44,17 @@
 
 (define (parse1 sexp)
   (match sexp
-    [(? const? x) (const-exp x)]
-    [(? symbol? x) (var-exp x)]
-    ; a list(this should be put before symbol)
-    [`(quote (,x* ...))
-      (list-exp (map (lambda (x)
-                       (cond ((symbol? x)
-                              (parse1-or-fail `(quote ,x)))
-                             ((list? x)
-                              (parse1-or-fail (list 'quote x)))
-                             (else
-                               (parse1-or-fail x))))
-                       x*))]
-    ; quoted atom
+    [(? const? x) (cps-const-exp x)]
+    [(? symbol? x) (cps-var-exp x)]
+    ; quoted sexp
     [`(quote ,x)
-      (atom-exp x)]
+      (cps-quote-exp x)]
     ; builtin ops
     [(list (? op? op) params* ...)
-     (op-exp op (map parse1-or-fail params*))]
+     (cps-op-exp op (map parse1-or-fail params*))]
     ; lambda
     [`(lambda (,params ...) ,body ,bodies* ...)
-      (lambda-exp params
+      (cps-lambda-exp params
                   (parse `(begin ,body ,@bodies*)))]
 
     [_ #f]))

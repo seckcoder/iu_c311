@@ -2,7 +2,7 @@
 
 (require "../base/utils.rkt")
 (require "tail-form.rkt")
-(require "grammar.rkt")
+(require "parser/parser-out.rkt")
 
 (define test-prog
   (lambda (prog)

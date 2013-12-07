@@ -3,82 +3,136 @@
 (require "../base/utils.rkt")
 (require racket/match)
 
-(define-datatype
-  continuation continuation?
-  (end-cont)
-  (call-rand-cont
-    (cps-simple-rator sexp?)
-    (cont continuation?))
-  (call-rator-cont
-    (rand sexp?)
-    (cont continuation?))
-  )
 
-(define cps
-  (lambda (sexp cont)
+(define op?
+  (lambda (op)
+    (memq op '(cons list car cons
+                    - = * / +))))
+
+
+(define simple?
+  (lambda (sexp)
     (match sexp
-      [(? const? x) (apply-cont cont sexp #t)]
-      [(? symbol? x) (apply-cont cont sexp #t)]
-      [`(quote ,x) (apply-cont cont sexp #t)]
-      #|[(list (? op? op) params* ...)
-       (op-exp op (map parse params*))]
-      [`(lambda (,params ...) ,body)
-        (lambda-exp params
-                    (parse body))]
+      [(or (? const? x)
+           (? symbol? x)
+           `(quote ,x)) #t]
+      [(list (? op? op) params* ...)
+       (andmap simple? params*)]
       [`(if ,test ,then ,else)
-        (if-exp (parse test)
-                (parse then)
-                (parse else))]
-      [`(if ,test ,then)
-        (cps `(if ,test ,then (void)))]|#
-      [(list rator rand)
-       (cps rator (call-rator-cont rand cont))]
+        (andmap simple? (list test then else))]
+      [`(lambda (,x ,k) ,body) #t]
+      [`(lambda (,x) ,body) #f]
+      [(list rator rands* ...) #f])))
+
+(define append-if-not-null
+  (lambda (sexp k)
+    (if (null? k)
+      sexp
+      (append sexp (list k)))))
+
+(define cps-rands/k
+  (lambda (rator rands k)
+    (let-values ([(simple-rands tf-rands)
+                  (splitf-at rands simple?)])
+      (if (null? tf-rands)
+        (cps/k (cons rator simple-rands) k)
+        (let ((rand (car tf-rands))
+              (rest-tf-rands (cdr tf-rands)))
+          (cps/k rand (lambda (v-sym)
+                        (cps-rands/k rator
+                                     `(,@simple-rands
+                                        ,v-sym
+                                        ,@rest-tf-rands)
+                                     k))))))))
+
+(define cps/k
+  ; k: continuation of sexp
+  (lambda (sexp k)
+    (match sexp
+      [(? simple? sexp) (k sexp)]
+      [`(if ,test ,then ,else)
+        ; here ... something wrong
+        (if (simple? test)
+          `(if ,test
+             ,(cps/k then k)
+             ,(cps/k else k))
+          (cps/k test (lambda (v)
+                        (cps/k `(if ,v
+                                  ,then
+                                  ,else)
+                               k))))]
+      [(list (? op? op) params* ...)
+       (if (andmap simple? params*)
+         (k sexp)
+         (cps-rands/k op params* k))]
+      [`(lambda (,x) ,body)
+        (k
+          (let ((k-sym (gensym)))
+            (if (simple? body)
+              `(lambda (,x ,k-sym)
+                 (,k-sym ,x))
+              `(lambda (,x ,k-sym)
+                 ,(cps/k body (lambda (v)
+                                `(,k-sym ,v)))))))]
+      [(list rator rands* ...)
+       (let ((res-sym (gensym)))
+         (cond ((andmap simple? (cons rator rands*))
+                `(,rator ,@rands* (lambda (,res-sym)
+                                    ,(k res-sym))))
+               ((simple? rator)
+                ; what should we do with the returned value v?
+                ; use it to fill the hole of rator
+                (cps-rands/k rator rands* k))
+               (else
+                 (cps/k rator (lambda (f)
+                                (cps/k `(,f ,@rands*) k))))))]
       )))
 
-(define is-end-cont
-  (lambda (k)
-    (cases continuation k
-      (end-cont
-        ()
-        #t)
-      (else
-        #f))))
-
-(define apply-cont
-  (lambda (cont sexp simple?)
-    (cases continuation cont
-      (end-cont
-        ()
-        sexp)
-      (call-rand-cont
-        (cps-simple-rator saved-cont)
-        (let ((cps-rand sexp))
-          (if simple?
-            (apply-cont saved-cont
-                        (list cps-simple-rator cps-rand) #f)
-            (let* ((v (gensym))
-                   (sub-sexp (apply-cont saved-cont
-                                      (list cps-simple-rator v)
-                                      #f)))
-              (append cps-rand (list `(lambda (,v)
-                                        ,sub-sexp)))))))
-      (call-rator-cont
-        (rand saved-cont)
-        (let ((cps-rator sexp))
-          (if simple?
-            (cps rand (call-rand-cont cps-rator saved-cont))
-            (let* ((g (gensym))
-                   (sub-sexp (cps (list g rand) saved-cont)))
-              (append cps-rator (list `(lambda (,g)
-                                         ,sub-sexp)))
-              ))))
-    )))
-
+(define (cps sexp)
+  (cps/k sexp (lambda (v)
+                v)))
 
 (define (test)
-  ; (cps '((f a) b) (end-cont))
+  (cps '((f a) b))
   ; (cps '(((f a) b) c) (end-cont))
   ; (cps '(f a) (end-cont))
-  ; (cps '(f (g a)) (end-cont))
-  (cps '((f a) (g b)) (end-cont))
+  (cps '(f (g a)))
+  (cps '((f a) (g b)))
+  (cps '((g ((f a) b)) (h c)))
+  (cps '(f (if (g a)
+             (g b)
+             (g c))))
+  (cps '(+ (g a) 1))
+  (cps '(g (+ (f b) 1)))
+  (cps '(lambda (n)
+          ((lambda (mk)
+             ((mk mk) n))
+           (lambda (mk)
+             (lambda (n)
+               (if (= n 0)
+                 1
+                 (* n ((mk mk) (- n 1))))
+               )))))
+  (cps '((lambda (v) v) 1))
+  (cps '((lambda (v) (f (g v))) 1))
+
+  'ok
+  )
+
+(define (utest)
+  (define fact
+    (eval
+    (cps
+      '(lambda (n)
+         ((lambda (mk)
+            ((mk mk) n))
+          (lambda (mk)
+            (lambda (n)
+              (if (= n 0)
+                1
+                (* n ((mk mk) (- n 1))))
+              ))))
+      ))
+    )
+  (println (fact 5 (lambda (v) v)))
   )

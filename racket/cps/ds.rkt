@@ -1,6 +1,6 @@
 #lang eopl
 
-(require "grammar.rkt")
+(require "parser/parser-out.rkt")
 (require "../base/utils.rkt")
 (require "store.rkt")
 (provide (all-defined-out))

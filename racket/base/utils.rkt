@@ -3,6 +3,7 @@
 (require racket/base)
 (require racket/match)
 (require racket/list)
+(require racket/pretty)
 
 (provide anything?
          list-of
@@ -24,6 +25,15 @@
          take-right
          print
          printf
+         atom?
+         const?
+         sexp?
+         andmap
+         splitf-at
+         let-values
+         takef
+         dropf
+         pretty-print
          )
 
 (define anything?
@@ -55,11 +65,6 @@
        (if (not (pred va vb))
          (eopl:error 'check "~s:~s not ~s ~s:~s" `a va `pred `b vb)
          'ok))]))
-
-(define println
-  (lambda args
-    (apply eopl:printf args)
-    (newline)))
 
 (define list-n
   (lambda (n v)
@@ -97,3 +102,25 @@
         '()
         (cons (handle i)
               (loop (add1 i)))))))
+
+(define atom?
+  (lambda (v)
+    (and (not (pair? v))
+         (not (null? v)))))
+
+
+(define const?
+  (lambda (v)
+    (or (number? v)
+        (string? v)
+        (boolean? v))))
+
+
+(define sexp?
+  (lambda (s)
+    (or (atom? s)
+        (list? s))))
+
+(define println
+  (lambda args
+    (apply print args)(newline)))
