@@ -1,15 +1,10 @@
 #lang eopl
-
 (require "../base/utils.rkt")
 (require racket/match)
-
-
 (define op?
   (lambda (op)
     (memq op '(cons list car cons
                     - = * / +))))
-
-
 (define simple?
   (lambda (sexp)
     (match sexp
@@ -29,7 +24,6 @@
     (if (null? k)
       sexp
       (append sexp (list k)))))
-
 (define cps-rands/k
   (lambda (rator rands k)
     (let-values ([(simple-rands tf-rands)
@@ -44,14 +38,12 @@
                                         ,v-sym
                                         ,@rest-tf-rands)
                                      k))))))))
-
 (define cps/k
-  ; k: continuation of sexp
   (lambda (sexp k)
     (match sexp
       [(? simple? sexp) (k sexp)]
       [`(if ,test ,then ,else)
-        ; here ... something wrong
+        ; returned value is in then and else
         (if (simple? test)
           `(if ,test
              ,(cps/k then k)
@@ -66,6 +58,7 @@
          (k sexp)
          (cps-rands/k op params* k))]
       [`(lambda (,x) ,body)
+        ; lambda is the returned value
         (k
           (let ((k-sym (gensym)))
             (if (simple? body)
@@ -75,13 +68,14 @@
                  ,(cps/k body (lambda (v)
                                 `(,k-sym ,v)))))))]
       [(list rator rands* ...)
+       ; k:
+       ; what should we do with the returned value v?
+       ; use it to fill the hole of rator
        (let ((res-sym (gensym)))
          (cond ((andmap simple? (cons rator rands*))
                 `(,rator ,@rands* (lambda (,res-sym)
                                     ,(k res-sym))))
                ((simple? rator)
-                ; what should we do with the returned value v?
-                ; use it to fill the hole of rator
                 (cps-rands/k rator rands* k))
                (else
                  (cps/k rator (lambda (f)
@@ -131,12 +125,13 @@
                             )))))
          (fact-cps-prog (cps fact-prog))
          (fact/k (eval fact-cps-prog))
-         (fact (lambda (n)
-                 (fact/k n (lambda (v) v)))))
+         (fact (eval fact-prog))
+         (fact-cps (lambda (n)
+                     (fact/k n (lambda (v) v)))))
     (println "***********************cps transformation**********************")
     (pretty-print fact-prog)
     (println "*************************to**************************************")
     (pretty-print fact-cps-prog)
     (newline)
-    (println (fact 10)))
-    )
+    (println (fact 10))
+    (println (fact-cps 10))))
