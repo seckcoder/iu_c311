@@ -67,19 +67,19 @@
               `(lambda (,x ,k-sym)
                  ,(cps/k body (lambda (v)
                                 `(,k-sym ,v)))))))]
-      [(list rator rands* ...)
+      [(list rator rand)
        ; k:
        ; what should we do with the returned value v?
        ; use it to fill the hole of rator
        (let ((res-sym (gensym)))
-         (cond ((andmap simple? (cons rator rands*))
-                `(,rator ,@rands* (lambda (,res-sym)
+         (cond ((andmap simple? (list rator rand))
+                `(,rator ,rand (lambda (,res-sym)
                                     ,(k res-sym))))
                ((simple? rator)
-                (cps-rands/k rator rands* k))
+                (cps-rands/k rator (list rand) k))
                (else
                  (cps/k rator (lambda (f)
-                                (cps/k `(,f ,@rands*) k))))))]
+                                (cps/k `(,f ,rand) k))))))]
       )))
 
 (define (cps sexp)
