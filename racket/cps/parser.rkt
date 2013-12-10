@@ -173,7 +173,7 @@
         (cps-var-exp
           (var) var)
         (cps-quote-exp
-          (exp) (quote exp))
+          (exp) `(quote ,exp))
         (cps-op-exp
           (op params)
           `(,op ,@(map unparse1 params)))
@@ -215,6 +215,7 @@
            (check-equal? (out:unparse (out:parse prog)) prog desc)
            (apply test-out:unparse rest)])))
     (test-out:unparse 'a "simple variable"
+                      ''a "simple symbol"
                       '(foo a) "procedure call"
                       '(if a
                          (foo a)
