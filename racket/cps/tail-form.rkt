@@ -1,9 +1,10 @@
-#lang eopl
+#lang racket
 
-(require "../base/utils.rkt")
-(require "ds.rkt")
-(require "store.rkt")
-(require "parser/parser-out.rkt")
+(require eopl/datatype
+         "../base/utils.rkt"
+         "ds.rkt"
+         "store.rkt"
+         (submod "parser.rkt" ds))
 
 (define extend-env-recursively
   (lambda (p-names proc-exps inherited-env)
@@ -31,9 +32,10 @@
         sexp)
       (cps-op-exp
         (op exps)
-        (apply (eval op) (map (lambda (exp)
-                                (value-of-simple-exp exp env))
-                              exps)))
+        (apply (eval op (make-base-namespace))
+               (map (lambda (exp)
+                      (value-of-simple-exp exp env))
+                    exps)))
       (cps-lambda-exp
         (vars body)
         (closure vars body env))
@@ -56,15 +58,6 @@
         (if (value-of-simple-exp pred env)
           (interp-exp/k body-yes env)
           (interp-exp/k body-no env)))
-      (cps-compound-exp
-        (simple-exps a-tfexp)
-        ; If a language doesn't allow side-effect,
-        ; then what's the usage of compound expression?
-        ; Hmm, interesting...
-        (map (lambda (exp)
-               (value-of-simple-exp exp env))
-             simple-exps)
-        (interp-exp/k a-tfexp env))
       (cps-call-exp
         (rator rands)
         (let ((rator-proc (value-of-simple-exp rator env))

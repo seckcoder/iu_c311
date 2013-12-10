@@ -1,8 +1,10 @@
-#lang eopl
+#lang racket
 
-(require "parser/parser-out.rkt")
-(require "../base/utils.rkt")
-(require "store.rkt")
+(require eopl/datatype
+         "../base/utils.rkt"
+         "store.rkt"
+         (submod "parser.rkt" ds))
+
 (provide (all-defined-out))
 
 #|(define-datatype
@@ -107,7 +109,7 @@
       environment env
       (empty-env
         ()
-        (eopl:error 'apply-env "var:~s not found" search-var))
+        (error "apply-env var:~s not found" search-var))
       (extend-env
         (vars refs inherited-env)
         (let ((idx (index-of vars search-var)))

@@ -3,8 +3,7 @@
 (require racket/pretty)
 (require eopl/datatype)
 (require "../base/utils.rkt")
-(require (submod "parser.rkt" ds)
-         "parser.rkt")
+(require (submod "parser.rkt" ds))
 
 (define m-gensym
   (let ((n 0))
@@ -150,13 +149,33 @@
   (test-cps '((lambda (a)
                 (f a))
               3) '((lambda (a f13) (f a f13)) 3 (lambda (v11) v11)) "lambda")
-  #|(out:unparse (cps (in:parse '(lambda (n)
-                                 ((lambda (mk)
-                                    ((mk mk) n))
-                                  (lambda (mk)
-                                    (lambda (n)
-                                      (if (= n 0)
-                                        1
-                                        (* n ((mk mk) (- n 1))))
-                                      )))))))|#
+  #|(out:unparse (cps (in:parse ')))|#
+  )
+
+(module+ test
+  (require "tail-form.rkt"
+           "parser.rkt")
+  (define test-result
+    (lambda args
+      (match args
+        [(list) (void)]
+        [(list in-prog result desc rest ...)
+         (check-equal? (interp (cps (in:parse in-prog)))
+                       result
+                       desc)
+         (apply test-result rest)]
+        )))
+  (test-result '3 3 "number")
+  (test-result '((lambda (v)
+                   v)
+                 4) 4 "lambda")
+  (test-result '((lambda (n)
+                  ((lambda (mk)
+                     ((mk mk) n))
+                   (lambda (mk)
+                     (lambda (n)
+                       (if (= n 0)
+                         1
+                         (* n ((mk mk) (- n 1))))
+                       )))) 10) 3628800 "u-combinator")
   )

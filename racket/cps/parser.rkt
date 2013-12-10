@@ -64,8 +64,8 @@
         (procs (list-of simple-exp?))
         (body tfexp?))
       (cps-call-exp
-        (rand simple-exp?)
-        (rators (list-of simple-exp?)))
+        (rator simple-exp?)
+        (rands (list-of simple-exp?)))
       )
     )
 
