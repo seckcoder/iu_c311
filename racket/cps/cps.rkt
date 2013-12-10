@@ -69,6 +69,12 @@
                              (cps-if-exp simple-test
                                          (cps/k then k-exp)
                                          (cps/k else k-exp)))))
+           (letrec-exp
+             (p-names procs body)
+             (cps-exps procs (lambda (cps-procs)
+                               (cps-letrec-exp p-names
+                                               cps-procs
+                                               (cps/k body k-exp)))))
            (else
              (begin
                (printf "~v is not supported\n" exp)
@@ -178,4 +184,12 @@
                          1
                          (* n ((mk mk) (- n 1))))
                        )))) 10) 3628800 "u-combinator")
+  (test-result '(let ((foo (lambda (v)
+                             v)))
+                  (foo 4)) 4 "let exp")
+  (test-result '(letrec ((fact (lambda (n)
+                                 (if (= n 0)
+                                   1
+                                   (* n (fact (- n 1)))))))
+                  (fact 10)) 3628800 "letrec")
   )

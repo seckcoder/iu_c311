@@ -33,6 +33,10 @@
       (call-exp
         (rand expression?)
         (rators (list-of expression?)))
+      (letrec-exp
+        (p-names (list-of symbol?))
+        (procs (list-of expression?))
+        (body expression?))
       )
 
     (define-datatype
@@ -92,6 +96,14 @@
                     (parse else))]
           [`(if ,test ,then)
             (parse `(if ,test ,then (void)))]
+          [`(letrec ((,name* ,proc*) ...) ,body)
+            (letrec-exp name*
+                        (map parse proc*)
+                        (parse body))]
+          [`(let ((,var ,val) ...) ,body)
+            (parse `((lambda (,@var)
+                       ,body)
+                     ,@val))]
           [(list rand rators ...)
            (call-exp (parse rand)
                      (map parse rators))]
