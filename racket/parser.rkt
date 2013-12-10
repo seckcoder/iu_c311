@@ -21,8 +21,8 @@
     (cst const?))
   (var-exp
     (var symbol?))
-  (symbol-exp
-    (sym symbol?))
+  (quote-exp
+    (sexp sexp?))
   (op-exp
     (op op?)
     (params (list-of expression?)))
@@ -41,8 +41,6 @@
   (define-exp
     (var symbol?)
     (val expression?))
-  (list-exp
-    (vals (list-of expression?)))
   (letrec-exp
     (p-names (list-of symbol?))
     (procs (list-of expression?))
@@ -59,11 +57,8 @@
     [(? number? x) (const-exp x)]
     [(? string? x) (const-exp x)]
     [(? symbol? x) (var-exp x)]
-    ; a list(this should be put before symbol)
-    [`(quote (,x* ...))
-      (list-exp (parse-multi x*))]
     ; symbol
-    [`(quote ,x) (symbol-exp x)]
+    [`(quote ,x) (quote-exp x)]
     ; builtin ops
     [(list (? op? op) params* ...)
      (op-exp op (parse-multi params*))]
