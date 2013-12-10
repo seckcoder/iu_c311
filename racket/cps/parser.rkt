@@ -1,5 +1,8 @@
-; run raco test parser.rkt
+; scheme parser; scheme cps parser and unparser.
 (module parser racket
+  (provide in:parse
+           out:parse
+           out:unparse)
   (module ds racket
     (require eopl/datatype)
     (require "../base/utils.rkt")
@@ -97,9 +100,7 @@
       (error "unparser not implemented"))
     )
 
-  (require (rename-in 'in
-                      [parse parse-in]
-                      [unparse unparse-in]))
+  (require (prefix-in in: 'in))
 
   (module out racket
     (provide parse)
@@ -201,21 +202,19 @@
         )) 
     )
 
-  (require (rename-in 'out
-                      [parse parse-out]
-                      [unparse unparse-out]))
+  (require (prefix-in out: 'out))
 
   (module+ test
     (require rackunit)
     (require (submod ".." out))
-    (define test-unparse-out
+    (define test-out:unparse
       (lambda args
         (match args
           [(list) (void)]
           [(list prog desc rest ...)
-           (check-equal? (unparse-out (parse-out prog)) prog desc)
-           (apply test-unparse-out rest)])))
-    (test-unparse-out 'a "simple variable"
+           (check-equal? (out:unparse (out:parse prog)) prog desc)
+           (apply test-out:unparse rest)])))
+    (test-out:unparse 'a "simple variable"
                       '(foo a) "procedure call"
                       '(if a
                          (foo a)
