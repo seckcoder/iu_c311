@@ -10,30 +10,15 @@
          index-of
          check
          println
-         foldl
          while
          add1
          sub1
          caddddr
-         gensym
          find
-         filter
-         make-hasheq
-         hash-ref!
          mapn
-         drop-right
-         take-right
-         print
-         printf
          atom?
          const?
          sexp?
-         andmap
-         splitf-at
-         let-values
-         takef
-         dropf
-         pretty-print
          )
 
 (define anything?
