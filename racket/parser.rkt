@@ -1,18 +1,13 @@
 #lang racket
-; a light-weight scheme parser based on pattern matching and algebraic data type
 
-(require racket/match)
-(require eopl/datatype)
-(require "base/utils.rkt")
+(require eopl/datatype
+         "base/utils.rkt")
 
-(define const?
-  (lambda (v)
-    (or (number? v)
-        (string? v))))
+(provide (all-defined-out))
 
 (define op?
   (lambda (op)
-    (memq op '(+ - * / zero? cons car cdr list null?
+    (memq op '(+ - = * / zero? cons car cdr list null?
                number? symbol? list?))))
 
 (define-datatype
@@ -27,8 +22,8 @@
     (op op?)
     (params (list-of expression?)))
   (call-exp
-    (rand expression?)
-    (rators (list-of expression?)))
+    (rator expression?)
+    (rands (list-of expression?)))
   (if-exp
     (test expression?)
     (then expression?)
@@ -38,9 +33,6 @@
     (body expression?))
   (compound-exp
     (exps (list-of expression?)))
-  (define-exp
-    (var symbol?)
-    (val expression?))
   (letrec-exp
     (p-names (list-of symbol?))
     (procs (list-of expression?))
@@ -73,9 +65,6 @@
                   (parse `(begin ,body ,@bodies*)))]
     [`(begin ,body ,bodies* ...)
       (compound-exp (parse-multi (cons body bodies*)))]
-    ; how to support define in any order?
-    [`(define ,var ,val)
-      (define-exp var (parse val))]
     [`(let ((,var ,val) ...) ,body ,bodies* ...)
       (parse `((lambda (,@var)
                  ,@(cons body bodies*))
@@ -91,26 +80,3 @@
                       (parse rator))
                     rators))]
     ))
-#|(parse '(lambda (a b c)
-          (display a)
-          (foo b)))
-
-(parse '(define a 3))
-
-(parse '((lambda (a b)
-           (display a)
-           (display b)) 3 4))
-
-(parse '(let ((a 3)
-              (b 4))
-          (display a)
-          (display b)))
-
-(parse '(cons a '(1 2 3)))|#
-
-#|(parse '(letrec ((foo (lambda (v)
-                        v))
-                 (bar (lambda (v)
-                        v)))
-          (foo 2)
-          (bar 3)))|#
