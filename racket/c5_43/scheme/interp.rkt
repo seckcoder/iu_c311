@@ -110,6 +110,12 @@
                                  (newref (cont k))
                                  env)))
         (interp/k body new-env k)))
+    (set-exp
+      (var val-exp)
+      (interp/k val-exp env (lambda (val)
+                              (setref! (apply-env env var)
+                                       val)
+                              (k (void)))))
     ))
 
 (define (interp exp)
@@ -148,5 +154,10 @@
              24 "letrec")
   (test-prog '(- 3 (let/cc k
                      (k 2))) 1 "letcc")
-
+  (test-prog '(let ((call/cc (lambda (p)
+                               (let/cc k
+                                 (p k)))))
+                (- 3 (call/cc (lambda (k)
+                                (k 2)))))
+             1 "call/cc")
   )

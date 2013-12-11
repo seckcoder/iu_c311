@@ -40,6 +40,9 @@
   (letcc-exp
     (var symbol?)
     (body expression?))
+  (set-exp
+    (var symbol?)
+    (val expression?))
   )
 
 (define (parse-multi exps)
@@ -79,6 +82,9 @@
     [`(let/cc ,var ,body ,bodies* ...)
       (letcc-exp var
                  (parse `(begin ,body ,@bodies*)))]
+    [`(set! ,var ,val)
+      (set-exp var
+               (parse val))]
     ; procedure call
     [(list rand rators ...)
      (call-exp (parse rand)
