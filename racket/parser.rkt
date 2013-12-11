@@ -37,6 +37,9 @@
     (p-names (list-of symbol?))
     (procs (list-of expression?))
     (body expression?))
+  (letcc-exp
+    (var symbol?)
+    (body expression?))
   )
 
 (define (parse-multi exps)
@@ -73,6 +76,9 @@
       (letrec-exp name*
                   (parse-multi proc*)
                   (parse `(begin ,body ,@bodies*)))]
+    [`(let/cc ,var ,body ,bodies* ...)
+      (letcc-exp var
+                 (parse `(begin ,body ,@bodies*)))]
     ; procedure call
     [(list rand rators ...)
      (call-exp (parse rand)

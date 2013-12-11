@@ -7,14 +7,14 @@
          "../store.rkt"
          "env.rkt")
 
-(define extend-env-recursively
+(define extend-envs-recursively
   (lambda (p-names proc-exps env k)
     (let* ((proc-refs (mapn (lambda (i)
                               (newref i))
                             (length proc-exps)))
-           (new-env (extend-env p-names
-                                proc-refs
-                                env)))
+           (new-env (extend-envs p-names
+                                 proc-refs
+                                 env)))
       (interp-exps/k proc-exps
                      new-env
                      (lambda (lst-of-proc)
@@ -29,16 +29,22 @@
     (vars (list-of symbol?))
     (body expression?)
     (env environment?))
+  (cont
+    (k procedure?))
   )
 (define apply-proc
   (lambda (rator rands k)
     (cases proc rator
       (closure
         (vars body env)
-        (let ((new-env (extend-env vars
+        (let ((new-env (extend-envs vars
                                    (newrefs rands)
                                    env)))
-          (interp/k body new-env k))))))
+          (interp/k body new-env k)))
+      (cont
+        (saved-k)
+        (saved-k (car rands)))
+      )))
 
 ; InpExps * Env * ((Res)->Res) -> (list-of Res)
 (define (interp-exps/k exps env k)
@@ -93,11 +99,17 @@
                        (k (car (list-tail lst-of-v 0))))))
     (letrec-exp
       (p-names procs body)
-      (extend-env-recursively p-names
-                              procs
-                              env
-                              (lambda (new-env)
-                                (interp/k body new-env k))))
+      (extend-envs-recursively p-names
+                               procs
+                               env
+                               (lambda (new-env)
+                                 (interp/k body new-env k))))
+    (letcc-exp
+      (var body)
+      (let ((new-env (extend-env var
+                                 (newref (cont k))
+                                 env)))
+        (interp/k body new-env k)))
     ))
 
 (define (interp exp)
@@ -134,4 +146,7 @@
                                  (* n (fact (- n 1)))))))
                 (fact 4))
              24 "letrec")
+  (test-prog '(- 3 (let/cc k
+                     (k 2))) 1 "letcc")
+
   )
