@@ -57,4 +57,22 @@
        )
     ))
 
-(example4)
+(define (example5)
+  ; go-when
+  (let ((right-now (lambda ()
+                     (call/cc (lambda (cc)
+                                (cc cc)))))
+        (go-when (lambda (then)
+                   (then then))))
+    ; Q: How the code runs?
+    ; A: It implements an infinite loop. right-now returns the current continuation,
+    ;    go-when makes the continuation returned as the result of continuation.
+    ;    So when go-when called, it returns to the point of assigning result of `(right-now)
+    ;    to `moment`. At the same time, moment is always continuation since it passes
+    ;    continuation as argument(ie, return continuation as result of call/cc)
+    (let ((moment (right-now)))
+      (display "hello, world")
+      (newline)
+      (go-when moment))
+    ))
+
