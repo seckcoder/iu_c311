@@ -5,13 +5,9 @@
            out:unparse)
   (module ds racket
     (require eopl/datatype)
-    (require "../base/utils.rkt")
+    (require "../base/utils.rkt"
+             "builtin.rkt")
     (provide (all-defined-out))
-    (define op?
-      (lambda (op)
-        (memq op '(+ - * / = zero? cons car cdr list null? not
-                     number? symbol? list? eq? eqv? equal? void
-                     atom? void?))))
     (define-datatype
       expression expression?
       (const-exp

@@ -1,17 +1,10 @@
 #lang racket
 
 (require eopl/datatype
-         "base/utils.rkt")
+         "base/utils.rkt"
+         "cps/builtin.rkt")
 
 (provide (all-defined-out))
-
-(define op?
-  (lambda (op)
-    (memq op '(+ - = * / zero? cons car cdr list null?
-               eq? equal? eqv?
-               number? symbol? list? not
-               display newline print printf
-               void))))
 
 (define-datatype
   expression expression?
