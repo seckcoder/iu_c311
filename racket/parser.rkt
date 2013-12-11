@@ -8,7 +8,8 @@
 (define op?
   (lambda (op)
     (memq op '(+ - = * / zero? cons car cdr list null?
-               number? symbol? list?))))
+               number? symbol? list? display newline not
+               void))))
 
 (define-datatype
   expression expression?
@@ -55,8 +56,7 @@
 
 (define (parse sexp)
   (match sexp
-    [(? number? x) (const-exp x)]
-    [(? string? x) (const-exp x)]
+    [(? const? x) (const-exp x)]
     [(? symbol? x) (var-exp x)]
     ; symbol
     [`(quote ,x) (quote-exp x)]
@@ -64,6 +64,10 @@
     [(list (? op? op) params* ...)
      (op-exp op (parse-multi params*))]
     ; if 
+    [`(if ,test ,then)
+      (parse `(if ,test
+                ,then
+                (void)))]
     [`(if ,test ,then ,else)
       (if-exp (parse test)
               (parse then)

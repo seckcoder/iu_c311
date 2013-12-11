@@ -7,6 +7,8 @@
          "../store.rkt"
          "env.rkt")
 
+(provide meval)
+
 (define extend-envs-recursively
   (lambda (p-names proc-exps env k)
     (let* ((proc-refs (mapn (lambda (i)
@@ -43,7 +45,12 @@
           (interp/k body new-env k)))
       (cont
         (saved-k)
-        (saved-k (car rands)))
+        (cond ((null? rands)
+               (saved-k (void)))
+              ((= (length rands) 1)
+               (saved-k (car rands)))
+              (else
+                (error 'continuation "continuation receive zero or single argument"))))
       )))
 
 ; InpExps * Env * ((Res)->Res) -> (list-of Res)
@@ -96,7 +103,7 @@
       (interp-exps/k exps
                      env
                      (lambda (lst-of-v)
-                       (k (car (list-tail lst-of-v 0))))))
+                       (k (tail lst-of-v)))))
     (letrec-exp
       (p-names procs body)
       (extend-envs-recursively p-names
@@ -177,4 +184,7 @@
                      (k 2))) 1 "letcc")
   (test-prog '(- 3 (call/cc (lambda (k) (k 2))))
              1 "call/cc")
+  (test-prog '(let ((v 2))
+                (set! v 3)
+                v) 3 "set!")
   )

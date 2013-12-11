@@ -19,6 +19,7 @@
          atom?
          const?
          sexp?
+         tail
          )
 
 (define anything?
@@ -109,3 +110,12 @@
 (define println
   (lambda args
     (apply print args)(newline)))
+
+(define tail
+  (lambda (lst)
+    (cond ((null? lst)
+           (eopl:error 'tail "list is null"))
+          ((null? (cdr lst))
+           (car lst))
+          (else
+            (tail (cdr lst))))))
