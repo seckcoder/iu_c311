@@ -38,6 +38,8 @@
                                         ,v-sym
                                         ,@rest-tf-rands)
                                      k))))))))
+
+; InExp * ((SimpleExp) -> TFExp) -> TFExp
 (define cps/k
   (lambda (sexp k)
     (match sexp

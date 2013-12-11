@@ -43,6 +43,9 @@
   (set-exp
     (var symbol?)
     (val expression?))
+  (define-exp
+    (var symbol?)
+    (val expression?))
   )
 
 (define (parse-multi exps)
@@ -85,6 +88,8 @@
     [`(set! ,var ,val)
       (set-exp var
                (parse val))]
+    [`(define ,var ,val)
+      (define-exp var (parse val))]
     ; procedure call
     [(list rand rators ...)
      (call-exp (parse rand)

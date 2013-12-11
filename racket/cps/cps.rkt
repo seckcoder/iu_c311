@@ -23,7 +23,7 @@
       (m-gensym "f"))))
 
 
-; InpExps * ((SimpleExp) -> TfExp) -> TfExp
+; InpExps * ((SimpleExps) -> TfExp) -> TfExp
 (define cps-exps
   (lambda (exps builder)
     (let-values ([(in-simple-exps in-tf-exps)

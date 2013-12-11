@@ -116,14 +116,35 @@
                               (setref! (apply-env env var)
                                        val)
                               (k (void)))))
+    (define-exp
+      (var val-exp)
+      ; current implementation of define is apparently not right.
+      ; looking forward to better method
+      (interp/k val-exp env (lambda (val)
+                              (k (extend-env var (newref val) env)))))
     ))
 
-(define (interp exp)
-  (initialize-store!)
-  (interp/k exp (empty-env) (lambda (v) v)))
+(define (interp exp env)
+  (interp/k exp env (lambda (v) v)))
 
-(define (interp-sexp sexp)
-  (interp (parse sexp)))
+(define (interp-sexp sexp env)
+  (interp (parse sexp) env))
+
+(define initial-env
+  (lambda defines
+    (let loop ((defines defines)
+               (env (empty-env)))
+      (if (null? defines)
+        env
+        (loop (cdr defines)
+              (interp-sexp (car defines) env))))))
+
+(define (meval sexp)
+  (initialize-store!)
+  (interp-sexp sexp (initial-env '(define call/cc (lambda (p)
+                                                    (let/cc k
+                                                      (p k))))))
+  )
 
 (module+ test
   (require rackunit)
@@ -132,7 +153,7 @@
       (match args
         [(list) (void)]
         [(list prog expected desc rest ...)
-         (check-equal? (interp-sexp prog) expected desc)
+         (check-equal? (meval prog) expected desc)
          (apply test-prog rest)])))
   (test-prog '3 3 "number")
   (test-prog '(+ 1 2) 3 "op")
@@ -154,10 +175,6 @@
              24 "letrec")
   (test-prog '(- 3 (let/cc k
                      (k 2))) 1 "letcc")
-  (test-prog '(let ((call/cc (lambda (p)
-                               (let/cc k
-                                 (p k)))))
-                (- 3 (call/cc (lambda (k)
-                                (k 2)))))
+  (test-prog '(- 3 (call/cc (lambda (k) (k 2))))
              1 "call/cc")
   )
