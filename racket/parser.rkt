@@ -8,7 +8,8 @@
 (define op?
   (lambda (op)
     (memq op '(+ - = * / zero? cons car cdr list null?
-               number? symbol? list? display newline not
+               number? symbol? list? not
+               display newline print printf
                void))))
 
 (define-datatype
@@ -54,6 +55,12 @@
          (parse exp))
        exps))
 
+(define (single-or-compound exps)
+  (if (null? (cdr exps))
+    (car exps)
+    `(begin
+       ,@exps)))
+
 (define (parse sexp)
   (match sexp
     [(? const? x) (const-exp x)]
@@ -75,7 +82,7 @@
     ; lambda
     [`(lambda (,params ...) ,body ,bodies* ...)
       (lambda-exp params
-                  (parse `(begin ,body ,@bodies*)))]
+                  (parse (single-or-compound (cons body bodies*))))]
     [`(begin ,body ,bodies* ...)
       (compound-exp (parse-multi (cons body bodies*)))]
     [`(let ((,var ,val) ...) ,body ,bodies* ...)
@@ -85,10 +92,10 @@
     [`(letrec ((,name* ,proc*) ...) ,body ,bodies* ...)
       (letrec-exp name*
                   (parse-multi proc*)
-                  (parse `(begin ,body ,@bodies*)))]
+                  (parse (single-or-compound (cons body bodies*))))]
     [`(let/cc ,var ,body ,bodies* ...)
       (letcc-exp var
-                 (parse `(begin ,body ,@bodies*)))]
+                 (parse (single-or-compound (cons body bodies*))))]
     [`(set! ,var ,val)
       (set-exp var
                (parse val))]
