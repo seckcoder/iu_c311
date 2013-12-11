@@ -8,6 +8,7 @@
 (define op?
   (lambda (op)
     (memq op '(+ - = * / zero? cons car cdr list null?
+               eq? equal? eqv?
                number? symbol? list? not
                display newline print printf
                void))))
@@ -101,6 +102,24 @@
                (parse val))]
     [`(define ,var ,val)
       (define-exp var (parse val))]
+    [`(cond (,pred* ,body*) ...)
+      (if (not (null? pred*))
+        (let ((pred (car pred*))
+              (body (car body*)))
+          (cond ((and (eq? pred 'else)
+                      (null? (cdr pred*)))
+                 (parse body))
+                ((eq? pred 'else)
+                 (error 'parse "cond else should be the last expression"))
+                (else
+                  (parse `(if ,pred
+                            ,body
+                            (cond ,@(map (lambda (pred body)
+                                           (list pred body))
+                                         (cdr pred*)
+                                         (cdr body*))))))))
+        '(void))
+      ]
     ; procedure call
     [(list rand rators ...)
      (call-exp (parse rand)
