@@ -162,29 +162,41 @@
         [(list prog expected desc rest ...)
          (check-equal? (meval prog) expected desc)
          (apply test-prog rest)])))
-  (test-prog '3 3 "number")
-  (test-prog '(+ 1 2) 3 "op")
-  (test-prog '((lambda (v)
+  (test-prog '3 3 "number"
+             '(+ 1 2) 3 "op"
+
+             '((lambda (v)
                  v)
-               3) 3 "lambda")
-  (test-prog '(let ((v 3))
-                v) 3 "let")
-  (test-prog '(let ((foo (lambda (v)
+               3) 3 "lambda"
+
+             '(let ((v 3))
+                v) 3 "let"
+
+             '(let ((foo (lambda (v)
                            v)))
                 (if (= (foo 3) 3)
                   (foo 4)
-                  (foo 5))) 4 "if")
-  (test-prog '(letrec ((fact (lambda (n)
+                  (foo 5))) 4 "if"
+
+             '(letrec ((fact (lambda (n)
                                (if (= n 0)
                                  1
                                  (* n (fact (- n 1)))))))
                 (fact 4))
-             24 "letrec")
-  (test-prog '(- 3 (let/cc k
-                     (k 2))) 1 "letcc")
-  (test-prog '(- 3 (call/cc (lambda (k) (k 2))))
-             1 "call/cc")
-  (test-prog '(let ((v 2))
+             24 "letrec"
+
+             '(- 3 (let/cc k
+                     (k 2))) 1 "letcc"
+
+             '(- 3 (call/cc (lambda (k) (k 2))))
+             1 "call/cc"
+             '(let ((v 2))
                 (set! v 3)
-                v) 3 "set!")
+                v) 3 "set!"
+             '(let ((a 3)
+                    (b 'a))
+                (cond ((eq? b 'b) 0)
+                      ((= a 4) 1)
+                      (else 2)))
+             2 "cond")
   )

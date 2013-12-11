@@ -1,6 +1,8 @@
 #lang racket
-(require "interp.rkt"
-         "../../parser.rkt")
+(require racket/pretty
+         "interp.rkt"
+         "../../parser.rkt"
+         "../../base/utils.rkt")
 
 
 (define (example1)
@@ -26,4 +28,33 @@
                       (k k)))))
   )
 
-(example2)
+(define (example3)
+  ; Q: how the code runs?
+  ; A: cc send the argument as the result of evaluating call/cc,
+  ;    therefore, after call: `(cc 1) 1 is returned as the result of call/cc,
+  ;    ie, the result of current-continuation
+  (define (current-continuation)
+    (call/cc (lambda (cc) (cc cc))))
+
+  (let ((cc (current-continuation)))
+    (printf "~v\n" cc)
+    (cond ((continuation? cc)
+           (cc 1))
+          ((= cc 1) (println "bingo"))
+          (else (println "contract violation")))
+    ))
+
+(define (example4)
+  (meval
+    '(let ((current-continuation (lambda ()
+                                   (call/cc (lambda (cc)
+                                              (cc cc))))))
+       (let ((cc (current-continuation)))
+         (printf "~v\n" cc)
+         (cond ((number? cc) (print "bingo"))
+               (else
+                 (cc 1))))
+       )
+    ))
+
+(example4)
