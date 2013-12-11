@@ -15,7 +15,7 @@
        (list #f sexp))]
     [`(lambda (,vars ...) ,body)
       (let ((f-sym (gensym)))
-        (list #t `(lambda ,@(append vars (list f-sym))
+        (list #t `(lambda ,(append vars (list f-sym))
                     ,(cps/k body (lambda (v)
                                    `(,f-sym ,v))))))]
     [_ (list #f sexp)]
@@ -100,4 +100,7 @@
                    1
                    (* n ((mk mk) (- n 1))))
                  ))))))
+  (cps '(lambda (x) (if (f x) a b)))
+  (pretty-print (cps '(lambda (x) (if (if x (f a) b) c d))))
+  (pretty-print (cps '(((f a) (g b)) ((f c) (g d)))))
   )
