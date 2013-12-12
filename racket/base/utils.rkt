@@ -15,6 +15,7 @@
          sub1
          caddddr
          find
+         mfindf
          mapn
          atom?
          const?
@@ -119,3 +120,9 @@
            (car lst))
           (else
             (tail (cdr lst))))))
+
+(define mfindf
+  (lambda (handle lst)
+    (match (find handle lst)
+      [(list finded? rest ...)
+       finded?])))

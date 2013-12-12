@@ -30,21 +30,58 @@
     [(list simple? simple-exp)
      simple-exp]))
 
+(define (replace body var sexp)
+  (match body
+    [(or (? const? x)
+         `(quote ,x)) body]
+    [(or (? symbol? x))
+     (if (eq? x var)
+       sexp
+       x)]
+    [`(lambda (,vars ...) ,sub-body)
+      (if (mfindf (lambda (t)
+                   (eq? var t))
+                 vars)
+        body
+        `(lambda ,vars
+           ,(replace sub-body var sexp)))]
+    [`(if ,test ,then ,else)
+      `(if ,(replace test var sexp)
+         ,(replace then var sexp)
+         ,(replace else var sexp))]
+    [(list (? op? op) rands ...)
+     (cons op (map (lambda (rand)
+                     (replace rand var sexp)) rands))]
+    [(list rator rands ...)
+     (map (lambda (subsexp)
+            (replace subsexp var sexp))
+          (cons rator rands))]
+    ))
+
+(define (send-cont k-exp simple-sexp)
+  (match k-exp
+    [`(lambda (,vars ...) ,body)
+      (replace body (car vars) simple-sexp)]
+      #|`(let ((,@vars ,simple-sexp))
+         ,body)]|#
+    [_ `(,k-exp ,simple-sexp)]))
+
 ; InpExp * SimpleExp -> tfExp
 (define (cps/k-exp sexp k-exp)
   (match (cps1 sexp)
     [(list simple? simple-sexp)
      (if simple?
-       `(,k-exp ,simple-sexp)
+       (send-cont k-exp simple-sexp)
        (match sexp
          [(list (? op? op) rands ...)
           (cps-multi/k rands (lambda (simple-rands)
-                               `(,k-exp (,op ,@simple-rands))))]
+                               (send-cont k-exp `(,op ,@simple-rands))))]
          [`(if ,test ,then ,else)
            (cps/k test (lambda (simple-test)
-                         `(if ,simple-test
-                            ,(cps/k-exp then k-exp)
-                            ,(cps/k-exp else k-exp))))]
+                         `(let ((k ,k-exp))
+                            (if ,simple-test
+                              ,(cps/k-exp then `k)
+                              ,(cps/k-exp else `k)))))]
          [(list rator rands ...)
           (cps-multi/k (cons rator rands)
                        (lambda (simple-exps)
@@ -79,7 +116,7 @@
 
 (module+ test
   (require rackunit)
-  (check-eq? (cps 'a) 'a "symbol")
+  #|(check-eq? (cps 'a) 'a "symbol")
   (cps '(f a))
   (cps '(f (g a)))
   (cps '((f a) (g b)))
@@ -102,32 +139,24 @@
                    1
                    (* n ((mk mk) (- n 1))))
                  ))))))
-  (cps '(lambda (x) (if (f x) a b)))
-  (pretty-print (cps '(((f a) (g b)) ((f c) (g d)))))
-  (pretty-print (cps '(lambda (x)
-                        (if x
-                          a
-                          b))))
-  (pretty-print (cps '(lambda (x)
-                        (if (if x
-                              (f a)
-                              b)
-                          c
-                          d))))
-  (pretty-print (cps '(lambda (x)
-                        (if (if t
-                              (if x
-                                (f a)
-                                b)
-                              c)
-                          e
-                          w))))
-  (pretty-print (cps '(lambda (x)
-                        (if (f a)
-                          (if b
-                            (f b)
-                            (f c))
-                          (if c
-                            (f a)
-                            (f b))))))
+  (cps '(lambda (x) (if (f x) a b)))|#
+
+  ; test for 6.22
+  ; (cps '(+ (f a) 3))
+
+
+  ; test for 6.23
+  #|(cps '(if a
+          (f a)
+          (f b)))
+  (pretty-print
+  (cps '(if (if a
+              (f a)
+              b)
+          (f a)
+          b)))|#
+
+  ; test for 6.24 
+  #|(cps '(+ (f a) 4))
+  (pretty-print (cps '(+ 3 (+ 4 (f a)))))|#
   )
