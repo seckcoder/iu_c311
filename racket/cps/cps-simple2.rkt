@@ -107,17 +107,21 @@
                         (cons (car sexps)
                               acc)))
           (else
-            (let ((v-sym (gensym)))
-              (cps/k-exp (car sexps)
-                         `(lambda (,v-sym)
-                            ,(cps-of-rest (cdr sexps)
-                                          (cons v-sym acc))))))
-          )))
+            (cps/k (car sexps)
+                   (lambda (v)
+                     (cps-of-rest (cdr sexps)
+                                  (cons v acc))))))))
 
+; 6.30
 ; InpExp * ((SimpleExp) -> TfExp) -> TfExp
 (define (cps/k sexp builder)
-  (cps-multi/k (list sexp) (lambda (simple-exps)
-                             (builder (car simple-exps)))))
+  (match (cps1 sexp)
+    [(list is-simple? simple-sexp)
+     (if is-simple?
+       (builder simple-sexp)
+       (let ((v-sym (gensym)))
+         (cps/k-exp sexp `(lambda (,v-sym)
+                            ,(builder v-sym)))))]))
 
 (define (cps sexp)
   (cps/k sexp (lambda (v)
@@ -142,9 +146,9 @@
           (f b)
           (f c)))
   )|#
-  #|(cps '(if a
+  (cps '(if a
     (f a)
-    b))|#
+    b))
   #|(pretty-print
   (cps '(if (if a
                  (f a)
