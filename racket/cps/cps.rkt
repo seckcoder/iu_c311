@@ -41,13 +41,20 @@
                                 ,@rest-in-tf-exps)
                              builder))))))))
 
+; 6.22 (I didn't support let-exp and I transformted all let-exp
+; into lambda-exp during parsing. But the problem is simple.
+; just transform ((lambda (v) ...) v) into (let ((v v)) ...)
+; And the transformation will be conducted when k-exp is lambda-exp
+(define (make-send-to-cont k-exp a-simple-exp)
+  (cps-call-exp k-exp (list a-simple-exp)))
+
 ; InpExp * SimpleExp -> TfExp
 (define cps/k
   (lambda (exp k-exp)
     (match (cps-simple exp)
       [(list simple? cpsed-exp)
        (if simple?
-         (cps-call-exp k-exp (list cpsed-exp))
+         (make-send-to-cont k-exp cpsed-exp)
          (cases expression exp
            (call-exp
              (rator rands)
@@ -62,7 +69,7 @@
              (op rands)
              (cps-exps rands
                        (lambda (simple-rands)
-                         (cps-call-exp k-exp (list (cps-op-exp op simple-rands))))))
+                         (make-send-to-cont k-exp (cps-op-exp op simple-rands)))))
            (if-exp
              (test then else)
              (cps-exp test (lambda (simple-test)
@@ -136,7 +143,7 @@
                        out-prog
                        desc)
          (apply test-cps rest)])))
-  (test-cps 'a 'a "simple var")
+  #|(test-cps 'a 'a "simple var")
   (test-cps ''a ''a "simple symbol")
   (test-cps '(f a) '(f a (lambda (v0)
                            v0)) "proc call")
@@ -154,7 +161,7 @@
                (f c)) '(f a (lambda (v10) (if v10 (f b (lambda (v9) v9)) (f c (lambda (v9) v9))))) "if")
   (test-cps '((lambda (a)
                 (f a))
-              3) '((lambda (a f13) (f a f13)) 3 (lambda (v11) v11)) "lambda")
+              3) '((lambda (a f13) (f a f13)) 3 (lambda (v11) v11)) "lambda")|#
   #|(out:unparse (cps (in:parse ')))|#
   )
 
