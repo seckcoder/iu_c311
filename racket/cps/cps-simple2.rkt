@@ -156,7 +156,7 @@
           (f a)
           b)))|#
 
-  ; test for 6.24 
+  ; test for 6.26 
   #|(cps '(+ (f a) 4))
   (pretty-print (cps '(+ 3 (+ 4 (f a)))))|#
   )
