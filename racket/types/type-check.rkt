@@ -36,6 +36,7 @@
     (else
       (error 'vartype-of-lambda "~s is not a lambda expression" exp))))
 
+
 (define (typeof exp tenv)
   (cases expression exp
     (const-exp
@@ -101,10 +102,12 @@
                         (list var-types ret-type)))
                     ret-types procs))
              (new-tenv (extend-envs p-names (newrefs p-types) tenv))
-             (_ (map (lambda (proc)
+             (_ (map (lambda (proc p-type)
                        ; just a verification
-                       (typeof proc new-tenv))
-                     procs)))
+                       (check-equal-type! (typeof proc new-tenv)
+                                          p-type
+                                          proc))
+                     procs p-types)))
         (typeof body new-tenv)))
     ))
 
@@ -133,4 +136,7 @@
   #|(pr (test-typeof '(letrec (((foo int) (lambda ((v int))
                                           (foo 'a))))
                       (foo 3))))|#
+  (pr (test-typeof '(letrec (((foo int) (lambda ((v int))
+                                          "a")))
+                      (foo 3))))
   )
