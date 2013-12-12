@@ -77,7 +77,7 @@
 
 (module+ test
   (require rackunit)
-  (check-eq? (cps 'a) 'a "symbol")
+  #|(check-eq? (cps 'a) 'a "symbol")
   (cps '(f a))
   (cps '(f (g a)))
   (cps '((f a) (g b)))
@@ -100,7 +100,32 @@
                    1
                    (* n ((mk mk) (- n 1))))
                  ))))))
-  (cps '(lambda (x) (if (f x) a b)))
-  (pretty-print (cps '(lambda (x) (if (if x (f a) b) c d))))
-  (pretty-print (cps '(((f a) (g b)) ((f c) (g d)))))
+  (cps '(lambda (x) (if (f x) a b)))|#
+  ; (pretty-print (cps '(((f a) (g b)) ((f c) (g d)))))
+  (pretty-print (cps '(lambda (x)
+                        (if x
+                          a
+                          b))))
+  (pretty-print (cps '(lambda (x)
+                        (if (if x
+                              (f a)
+                              b)
+                          c
+                          d))))
+  (pretty-print (cps '(lambda (x)
+                        (if (if t
+                              (if x
+                                (f a)
+                                b)
+                              c)
+                          e
+                          w))))
+  (pretty-print (cps '(lambda (x)
+                        (if (f a)
+                          (if b
+                            (f b)
+                            (f c))
+                          (if c
+                            (f a)
+                            (f b))))))
   )
