@@ -69,8 +69,8 @@
 ; InpExp * SimpleExp -> tfExp
 (define (cps/k-exp sexp k-exp)
   (match (cps1 sexp)
-    [(list simple? simple-sexp)
-     (if simple?
+    [(list is-simple? simple-sexp)
+     (if is-simple? 
        (send-cont k-exp simple-sexp)
        (match sexp
          [(list (? op? op) rands ...)
@@ -78,10 +78,15 @@
                                (send-cont k-exp `(,op ,@simple-rands))))]
          [`(if ,test ,then ,else)
            (cps/k test (lambda (simple-test)
-                         `(let ((k ,k-exp))
-                            (if ,simple-test
-                              ,(cps/k-exp then `k)
-                              ,(cps/k-exp else `k)))))]
+                         (cond ((symbol? k-exp)
+                                `(if ,simple-test
+                                   ,(cps/k-exp then k-exp)
+                                   ,(cps/k-exp else k-exp)))
+                               (else
+                                 `(let ((k ,k-exp))
+                                    (if ,simple-test
+                                      ,(cps/k-exp then `k)
+                                      ,(cps/k-exp else `k)))))))]
          [(list rator rands ...)
           (cps-multi/k (cons rator rands)
                        (lambda (simple-exps)
@@ -90,20 +95,24 @@
                             `(,rator ,@rands ,k-exp)])))]
          ))]))
 
+; 6.29
 ; InpExps * ((SimpleExps) -> TfExp) -> TfExp
 (define (cps-multi/k sexps builder)
-  (let-values ([(in-simple-exps in-tf-exps)
-                (splitf-at sexps simple?)])
-    (if (null? in-tf-exps)
-      (builder (map inexp->simple sexps))
-      (let ((in-a-tf-exp (car in-tf-exps))
-            (in-rest-tf-exp (cdr in-tf-exps))
-            (v-sym (gensym)))
-        (cps/k-exp in-a-tf-exp `(lambda (,v-sym)
-                                  ,(cps-multi/k `(,@in-simple-exps
-                                                  ,v-sym
-                                                  ,@in-rest-tf-exp)
-                                                builder)))))))
+  (let cps-of-rest ((sexps sexps)
+                    (acc '()))
+    (cond ((null? sexps)
+           (builder (map inexp->simple (reverse acc))))
+          ((simple? (car sexps))
+           (cps-of-rest (cdr sexps)
+                        (cons (car sexps)
+                              acc)))
+          (else
+            (let ((v-sym (gensym)))
+              (cps/k-exp (car sexps)
+                         `(lambda (,v-sym)
+                            ,(cps-of-rest (cdr sexps)
+                                          (cons v-sym acc))))))
+          )))
 
 ; InpExp * ((SimpleExp) -> TfExp) -> TfExp
 (define (cps/k sexp builder)
@@ -116,8 +125,8 @@
 
 (module+ test
   (require rackunit)
-  #|(check-eq? (cps 'a) 'a "symbol")
-  (cps '(f a))
+  (check-eq? (cps 'a) 'a "symbol")
+  #|(cps '(f a))
   (cps '(f (g a)))
   (cps '((f a) (g b)))
   (cps '(if a
@@ -126,7 +135,24 @@
   (cps '(if (f a)
           (f b)
           (f c)))
-  (cps '(+ 1 2 a))
+  (pretty-print
+  (cps '(if (if (f a)
+              (f b)
+              (f c))
+          (f b)
+          (f c)))
+  )|#
+  #|(cps '(if a
+    (f a)
+    b))|#
+  #|(pretty-print
+  (cps '(if (if a
+                 (f a)
+                 b)
+             (f a)
+             b))
+  )|#
+  #|(cps '(+ 1 2 a))
   (cps '(+ (f a) 3))
   (pretty-print (cps '(+ 3 (+ 4 (f a)))))
   (pretty-print
