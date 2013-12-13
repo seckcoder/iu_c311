@@ -20,7 +20,7 @@
   (match t
     [(? symbol? t) t]
     [(list (list var-types ...) ret-type)
-     (format "~s -> ~s" var-types ret-type)]
+     (format "~s -> ~s" (map pr var-types) (pr ret-type))]
     [_ (error 'pr "pr match error:~s" t)]))
 
 (define (check-equal-type! t1 t2 exp)
@@ -119,7 +119,7 @@
   )
 
 (module+ test
-  #|(pr (test-typeof '1))
+  (pr (test-typeof '1))
   (pr (test-typeof '"a"))
   (pr (test-typeof ''a))
   (pr (test-typeof ''(1 a 3)))
@@ -129,14 +129,14 @@
                       (+ a 2))))
   (pr (test-typeof '(letrec (((foo int) (lambda ((v int))
                                           (foo 2))))
-                      (foo 3))))|#
+                      (foo 3))))
   )
 
 (module+ test
   #|(pr (test-typeof '(letrec (((foo int) (lambda ((v int))
                                           (foo 'a))))
                       (foo 3))))|#
-  (pr (test-typeof '(letrec (((foo int) (lambda ((v int))
+  #|(pr (test-typeof '(letrec (((foo int) (lambda ((v int))
                                           "a")))
-                      (foo 3))))
+                      (foo 3))))|#
   )

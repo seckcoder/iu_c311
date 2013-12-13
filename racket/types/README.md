@@ -7,7 +7,8 @@ then infer the type of current expression.
 
 The instinct behind the type checker is:
 when we find it hard or impossible to infer, we require an explicit type
-specification. 
+specification; when we find we have redundant rules, we use them to verify
+the specified type by programmer.
 
 In the type-checker language, we ask you to specify the type for lambda expression
 and letrec.
@@ -19,6 +20,5 @@ and letrec.
 ; It's impossible to infer type for nonterminating
 ; recursive function.
 ;(letrec (((funcname rettype) lambda-exp)) body)
-
 
 ```
