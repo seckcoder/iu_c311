@@ -180,12 +180,17 @@
 
 ; unify ty1=ty2 to substitution
 (define (unify subst ty1 ty2 exp)
+  ; (print-subs subst)
   ; (printf "~a ~a\n" (prtype ty1) (prtype ty2))
   (let loop ((ty1 (apply-subst-to-type subst ty1))
              (ty2 (apply-subst-to-type subst ty2)))
     (cond ((equal? ty1 ty2)
            ; useless equation
            subst)
+          ((and (simpletype? ty1)
+                (simpletype? ty2)
+                (not (eq? ty1 ty2)))
+           (error 'unify "type error for expression:~s" exp))
           ((typevar? ty1)
            ; ty1 is typevar
            (if (occurs? ty1 ty2)
@@ -270,7 +275,7 @@
                     (zero? v)))|#
   #|(test-typeof '(lambda (f)
                     (f 1)))|#
-  (test-typeof '(lambda (f)
+  #|(test-typeof '(lambda (f)
                   (lambda (x)
                     (- (f 3) (f x)))))
   (test-typeof '(lambda (x)
@@ -302,8 +307,11 @@
   (test-typeof '(lambda (lst v)
                   (cons (+ v 2) '())))
   (test-typeof '(lambda (v)
-                  (list v)))
+                  (list v)))|#
   ; fail occurrence check
   #|(test-typeof '(lambda (f)
                     (f f)))|#
+
+  (test-typeof '(lambda (f)
+                  (+ (f #t) (f 1))))
   )
