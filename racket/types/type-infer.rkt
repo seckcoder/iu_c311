@@ -61,6 +61,7 @@
          (char=? (string-ref (symbol->string type) 0)
                  #\t))))
 
+; analyze sexpression and generate equations
 (define (analyze sexp env)
   (cases expression sexp
     (const-exp
@@ -118,11 +119,20 @@
       (error "not supported"))
     ))
 
-(define (real-typeof sexp)
+(define (typeof sexp)
   (initialize-store!)
   (match (analyze sexp (empty-env))
     [(list type equations)
-     (solve equations)]))
+     (let ((substitutions (solve equations)))
+       (if (null? substitutions)
+         type
+         (match (find (lambda (equation)
+                        (eq? type (equa->left equation)))
+                      substitutions)
+           [(list finded? equation rest ...)
+            (if finded?
+              (equa->right equation)
+              (error 'typeof "no type"))])))]))
 
 (define (pr-equa equation)
   (format "~a = ~a"
@@ -217,18 +227,6 @@
                               (append new-subs (list sub-equa))
                               (cdr old-subs))))])]))))))
 
-#|(define replace
-  (lambda (equation subs)
-    ; (Equation Substitions) -> Substitions
-    ; replace every substition and move equation to subs
-    (match equation
-      [(list left1 right1)
-       (append (map (lambda (sub)
-                      (match sub
-                        [(list left2 right2)
-                         (equa left2 (replace1 right2 left1 right1))]))
-                    subs)
-               (list equation))])))|#
 (define replace1
   (lambda (type sym new-type)
     ; replace every sym in type with new-type
@@ -285,8 +283,7 @@
                          new-subs)])))))
 
 (define (solve equas)
-  (print-equations equas)
-  (print-subs (solve-acc equas '() '())))
+  (solve-acc equas '() '()))
 
 (module+ test
   (require rackunit)
@@ -313,12 +310,19 @@
 
 
 (module+ test
-  (real-typeof (parse '(lambda (v)
-                           (zero? v))))
-  (real-typeof (parse '(lambda (f)
-                           (f 1))))
-
-  (real-typeof (parse '(lambda (f)
-                         (lambda (x)
-                           (- (f 3) (f x))))))
+  (define (test-typeof sexp)
+    (pr (typeof (parse sexp))))
+  (test-typeof '(lambda (v)
+                  (zero? v)))
+  (test-typeof '(lambda (f)
+                  (f 1)))
+  (test-typeof '(lambda (f)
+                  (lambda (x)
+                    (- (f 3) (f x)))))
+  (test-typeof '(lambda (f)
+                  (lambda (x)
+                    (- (f x) 1))))
+  (test-typeof '(lambda (x)
+                  (lambda (y)
+                    (x y))))
   )
