@@ -36,6 +36,11 @@
          (char=? (string-ref (symbol->string type) 0)
                  #\t))))
 
+; 'int 'bool ...
+(define (simpletype? t)
+  (and (symbol? t)
+       (not (typevar? t))))
+
 (define (typeof exp)
   (initialize-store!)
   (match (typeof/subst exp (empty-env) '())
@@ -138,12 +143,14 @@
 
 ; apply subst to type(replace type with bindings)
 (define (apply-subst-to-type subst type)
-  (foldl (lambda (subst-equa type)
-           (match subst-equa
-             [(list tyvar tybind)
-              (replace type tyvar tybind)]))
-         type
-         subst))
+  (if (simpletype? type)
+    type  ; a tiny optimization. only apply for non simpletype(eopl 7.20)
+    (foldl (lambda (subst-equa type)
+             (match subst-equa
+               [(list tyvar tybind)
+                (replace type tyvar tybind)]))
+           type
+           subst)))
 
 ; (type * type -> Equations)
 (define match-type
@@ -278,4 +285,8 @@
                                   #f
                                   (even (- n 1))))))
                   (odd 3)))
+
+  ; fail occurrence check
+  #|(test-typeof '(lambda (f)
+                    (f f)))|#
   )
