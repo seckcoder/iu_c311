@@ -3,7 +3,7 @@
 (require eopl/datatype
          "store.rkt"
          "env.rkt"
-         "infer-parser.rkt"
+         "infer-parser1.rkt"
          "../base/utils.rkt")
 
 (define (proctype var-type ret-type)
@@ -40,6 +40,7 @@
   (initialize-store!)
   (match (typeof/subst exp (empty-env) '())
     [(list type subst)
+     ;(print-subs subst)
      (cond ((and (symbol? type)
                  (not (typevar? type)))
             type)
@@ -48,8 +49,27 @@
            (else
              (error "typeof failed")))]))
 
-(define (typeof/subst sexp env subst)
-  (cases expression sexp
+(define (typeof-multi/subst exps env subst)
+  (let loop ((rev-exp-types '())
+             (subst subst)
+             (exps exps))
+    (if (null? exps)
+      (list (reverse rev-exp-types) subst )
+      (match (typeof/subst (car exps) env subst)
+        [(list exp-type subst)
+         (loop (cons exp-type rev-exp-types) subst (cdr exps))]))))
+
+(define (unify-multi subst types1 types2 exp)
+  #|(println types1)(println types2)
+  (println (length types1)) (println (length types2))|#
+  (foldl (lambda (ty1 ty2 subst)
+           (unify subst ty1 ty2 exp))
+         subst
+         types1
+         types2))
+
+(define (typeof/subst exp env subst)
+  (cases expression exp
     (const-exp
       (cst)
       (list (typeof-const cst) subst))
@@ -63,38 +83,37 @@
       (op rands)
       (let ((typeof-op (lambda (op-rand-type op-ret-type)
                          (list op-ret-type
-                               (foldl (lambda (rand subst)
-                                        (match (typeof/subst rand env subst)
-                                          [(list cur-rand-type new-subst)
-                                           (unify new-subst cur-rand-type op-rand-type exp)]))
-                                      subst
-                                      rands)))))
+                               (match (typeof-multi/subst rands env subst)
+                                 [(list cur-rand-types subst)
+                                  (unify-multi subst
+                                               cur-rand-types
+                                               (map (lambda (_) op-rand-type)
+                                                    cur-rand-types)
+                                               exp)])))))
         (cond ((memq op '(+ - * / =))
                (typeof-op 'int 'int))
               ((memq op '(zero?))
                (typeof-op 'int 'bool))
-              ((eq? op 'void)
-               (list 'void subst))
               (else
                 (error 'typeof/subst "op:~s not supported" op)))))
     (lambda-exp
-      (param body)
-      (let* ((param-tvar (typevar))
-             (new-env (extend-env param (newref param-tvar) env)))
+      (params body)
+      (let* ((param-tvars (map (lambda (v) (typevar)) params))
+             (new-env (extend-envs params (newrefs param-tvars) env)))
         (match (typeof/subst body new-env subst)
           [(list body-type new-subst)
-           (list (proctype (list param-tvar)
+           (list (proctype param-tvars
                            body-type)
                  new-subst)])))
     (call-exp
-      (rator rand)
+      (rator rands)
       (match (typeof/subst rator env subst)
         [(list rator-type subst)
-         (match (typeof/subst rand env subst)
-           [(list rand-type subst)
-            (let ((exp-tvar (typevar)))
-              (list exp-tvar
-                    (unify subst rator-type (proctype (list rand-type) exp-tvar) exp)))])]))
+         (let ((exp-tvar (typevar)))
+           (list exp-tvar
+                 (match (typeof-multi/subst rands env subst)
+                   [(list rand-types subst)
+                    (unify subst rator-type (proctype rand-types exp-tvar) exp)])))]))
     (if-exp
       (test then else)
       (match (typeof/subst test env subst)
@@ -106,12 +125,15 @@
                (list then-type
                      (unify subst then-type else-type exp))])])]))
     (letrec-exp
-      (p-name proc body)
-      (let* ((p-typevar (typevar))
-             (new-env (extend-env p-name (newref p-typevar) env)))
-        (match (typeof/subst proc new-env subst)
-          [(list p-type subst)
-           (typeof/subst body new-env (unify subst p-typevar p-type exp))])))
+      (p-names procs body)
+      (let* ((p-typevars (map (lambda (_) (typevar)) p-names))
+             (new-env (extend-envs p-names (newrefs p-typevars) env)))
+        (match (typeof-multi/subst procs new-env subst)
+          [(list p-types subst)
+           (typeof/subst body
+                         new-env
+                         (unify-multi subst p-typevars p-types exp)
+                         )])))
     ))
 
 ; apply subst to type(replace type with bindings)
@@ -247,4 +269,13 @@
                                      0
                                      (* (double (- v 1)) 2)))))
                   (double 3)))
+  (test-typeof '(letrec ((even (lambda (n)
+                                 (if (zero? n)
+                                   #t
+                                   (odd (- n 1)))))
+                         (odd (lambda (n)
+                                (if (zero? n)
+                                  #f
+                                  (even (- n 1))))))
+                  (odd 3)))
   )
