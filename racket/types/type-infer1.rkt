@@ -86,19 +86,28 @@
       (list (typeof-sexp sexp) subst))
     (op-exp
       (op rands)
-      (let ((typeof-op (lambda (op-rand-type op-ret-type)
+      (let ((typeof-op (lambda (op-rand-types op-ret-type)
                          (list op-ret-type
                                (match (typeof-multi/subst rands env subst)
                                  [(list cur-rand-types subst)
                                   (unify-multi subst
                                                cur-rand-types
-                                               (map (lambda (_) op-rand-type)
-                                                    cur-rand-types)
-                                               exp)])))))
+                                               op-rand-types
+                                               exp)]))))
+            (rand-num (length rands)))
         (cond ((memq op '(+ - * / =))
-               (typeof-op 'int 'int))
+               (typeof-op (v->lst rand-num 'int) 'int))
               ((memq op '(zero?))
-               (typeof-op 'int 'bool))
+               (typeof-op '(int) 'bool))
+              ; list support; eopl 7.25
+              ((eq? op 'list)
+               (typeof-op (mapn (lambda (_) (typevar)) rand-num) 'list))
+              ((eq? op 'car)
+               (typeof-op '(list) (typevar)))
+              ((eq? op 'cdr)
+               (typeof-op '(list) 'list))
+              ((eq? op 'cons)
+               (typeof-op (list (typevar) 'list) 'list))
               (else
                 (error 'typeof/subst "op:~s not supported" op)))))
     (lambda-exp
@@ -286,6 +295,14 @@
                                   (even (- n 1))))))
                   (odd 3)))
 
+  (test-typeof '(lambda (lst)
+                  (+ (car lst) 2)))
+  (test-typeof '(lambda (lst)
+                  (cdr lst)))
+  (test-typeof '(lambda (lst v)
+                  (cons (+ v 2) '())))
+  (test-typeof '(lambda (v)
+                  (list v)))
   ; fail occurrence check
   #|(test-typeof '(lambda (f)
                     (f f)))|#

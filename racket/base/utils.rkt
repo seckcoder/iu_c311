@@ -15,6 +15,7 @@
          find
          mfindf
          mapn
+         v->lst
          atom?
          const?
          sexp?
@@ -88,6 +89,9 @@
         '()
         (cons (handle i)
               (loop (add1 i)))))))
+
+(define (v->lst n v)
+  (mapn (lambda (_) v) n))
 
 (define atom?
   (lambda (v)

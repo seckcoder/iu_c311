@@ -1,4 +1,6 @@
 #lang racket
+; This is my implementation of type inference. It's also
+; eopl 7.27.
 
 (require eopl/datatype
          "store.rkt"
