@@ -71,8 +71,10 @@
                                       rands)))))
         (cond ((memq op '(+ - * / =))
                (typeof-op 'int 'int))
-              ((memq op '(zero? number?))
+              ((memq op '(zero?))
                (typeof-op 'int 'bool))
+              ((eq? op 'void)
+               (list 'void subst))
               (else
                 (error 'typeof/subst "op:~s not supported" op)))))
     (lambda-exp
@@ -93,8 +95,23 @@
             (let ((exp-tvar (typevar)))
               (list exp-tvar
                     (unify subst rator-type (proctype (list rand-type) exp-tvar) exp)))])]))
-    (else
-      (error "..."))
+    (if-exp
+      (test then else)
+      (match (typeof/subst test env subst)
+        [(list test-type subst)
+         (match (typeof/subst then env (unify subst test-type 'bool exp))
+           [(list then-type subst)
+            (match (typeof/subst else env subst)
+              [(list else-type subst)
+               (list then-type
+                     (unify subst then-type else-type exp))])])]))
+    (letrec-exp
+      (p-name proc body)
+      (let* ((p-typevar (typevar))
+             (new-env (extend-env p-name (newref p-typevar) env)))
+        (match (typeof/subst proc new-env subst)
+          [(list p-type subst)
+           (typeof/subst body new-env (unify subst p-typevar p-type exp))])))
     ))
 
 ; apply subst to type(replace type with bindings)
@@ -178,6 +195,9 @@
               (occurs? sym t))
             (cons ret-type var-types))]))
 
+
+; test code ========================
+
 ; get printable version of type names
 (define (prtype t)
   (match t
@@ -205,8 +225,6 @@
 (define (print-type type)
   (println (prtype type)))
 
-
-
 (module+ test
   (define (test-typeof sexp)
     (prtype (typeof (parse sexp))))
@@ -220,4 +238,13 @@
   (test-typeof '(lambda (x)
                   (lambda (y)
                     (x y))))
+  (test-typeof '(lambda (v)
+                  (if (zero? v)
+                    (+ v 2)
+                    v)))
+  (test-typeof '(letrec ((double (lambda (v)
+                                   (if (zero? v)
+                                     0
+                                     (* (double (- v 1)) 2)))))
+                  (double 3)))
   )
