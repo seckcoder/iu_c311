@@ -227,6 +227,7 @@
                               (append new-subs (list sub-equa))
                               (cdr old-subs))))])]))))))
 
+; substitution of a type for a type variable. type[sym = new-type]
 (define replace1
   (lambda (type sym new-type)
     ; replace every sym in type with new-type
