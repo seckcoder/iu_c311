@@ -1,6 +1,6 @@
 ; a functional queue
 
-#lang eopl
+#lang racket
 
 (require "utils.rkt")
 
@@ -27,13 +27,13 @@
 (define defq
   (lambda (fq callback)
     (if (fq-empty? fq)
-      (eopl:error 'defq "empty queue")
+      (error 'defq "empty queue")
       (callback (car fq) (cdr fq)))))
 
 (define defq1
   (lambda (fq)
     (if (fq-empty? fq)
-      (eopl:error 'defq "empty queue")
+      (error 'defq "empty queue")
       (car fq))))
 
 (define fq-find

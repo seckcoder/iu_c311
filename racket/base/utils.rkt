@@ -1,8 +1,6 @@
-#lang eopl
+#lang racket
 
-(require racket/base)
 (require racket/match)
-(require racket/list)
 (require racket/pretty)
 
 (provide anything?
@@ -21,6 +19,7 @@
          const?
          sexp?
          tail
+         flatmap
          )
 
 (define anything?
@@ -50,7 +49,7 @@
      (let ((va a)
            (vb b))
        (if (not (pred va vb))
-         (eopl:error 'check "~s:~s not ~s ~s:~s" `a va `pred `b vb)
+         (error 'check "~s:~s not ~s ~s:~s" `a va `pred `b vb)
          'ok))]))
 
 (define list-n
@@ -115,7 +114,7 @@
 (define tail
   (lambda (lst)
     (cond ((null? lst)
-           (eopl:error 'tail "list is null"))
+           (error 'tail "list is null"))
           ((null? (cdr lst))
            (car lst))
           (else
@@ -126,3 +125,13 @@
     (match (find handle lst)
       [(list finded? rest ...)
        finded?])))
+
+(define flatmap
+  (lambda (handle . rest)
+    (apply foldl `(,(lambda args
+                      (match args
+                        [(list handle-params ... acc)
+                         (append acc
+                                 (apply handle handle-params))]))
+                    ()
+                    ,@rest))))
