@@ -105,9 +105,9 @@
      (let ((v (var)))
        (let ((a ((all g ...) empty-s)))
          (s:!!
-           (map (lambda (s)
-                  (reify (walk* v s)))
-                (s:take n a)))))]))
+           (s:map (lambda (s)
+                    (reify (walk* v s)))
+                  (s:take n a)))))]))
 
 (define unit
   (lambda (s)
@@ -159,3 +159,10 @@
     [(_ (g^ g ...) c ...)
      (anye (all g^ g ...)
            (conde c ...))]))
+
+(run 1 (v)
+  (conde
+    ((== v #f))
+    ((== v #t)))
+  (== v #t))
+
