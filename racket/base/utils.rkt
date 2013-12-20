@@ -21,6 +21,7 @@
          sexp?
          tail
          flatmap
+         safe-take
          )
 
 (define anything?
@@ -139,3 +140,12 @@
                                  (apply handle handle-params))]))
                     ()
                     ,@rest))))
+
+(define safe-take
+  (lambda (lst n)
+    (if (or (= n 0)
+            (null? lst))
+      '()
+      (cons (car lst)
+            (safe-take (cdr lst)
+                       (- n 1))))))

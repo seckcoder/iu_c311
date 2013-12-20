@@ -60,6 +60,13 @@
                   rand-exps)))
     (call-exp
       (rator-exp rand-exps)
+      (cases expression rator-exp
+        (var-exp
+          (var) (deref (apply-env env var)))
+        (lambda-exp
+          (vars body)
+          (interp body (extend-envs vars
+                                    (
       (match (map (lambda (exp)
                     (interp exp env))
                   (cons rator-exp rand-exps))

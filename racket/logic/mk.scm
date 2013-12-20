@@ -253,7 +253,7 @@
     ; (printf "bind called ~a\n" a-inf)
     (case-inf a-inf
       (mzero)  ; fail
-      ((a) (g a)) ; a-inf is a subst
+      ((a) (g a)) ; a is a single subst
       ((a f) (mplus (g a) ; a-inf = (subst rest ...)
                (lambdaf@ () (bind (f) g)))))))
 

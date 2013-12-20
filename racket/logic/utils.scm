@@ -1,10 +1,5 @@
-; This implementation of caro is wrong. Why?
-#|(define caro|#
-    ;(lambda (lst q)
-    #|(== (car lst) q)))|#
-
 #lang racket
-(require "smk.rkt")
+(require "smk1.rkt")
 (provide (all-defined-out))
 
 (define teacupo
