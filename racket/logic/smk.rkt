@@ -135,7 +135,7 @@
 (define-syntax all
   (syntax-rules ()
     [(_) succeed]
-    [(_ g) g] ; just a tiny optimization
+    [(_ g) g] ; trival optimization
     [(_ g^ g ...)
      ; and combination
      (lambda (s)
