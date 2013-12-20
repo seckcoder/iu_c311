@@ -3,6 +3,10 @@
     ;(lambda (lst q)
     #|(== (car lst) q)))|#
 
+#lang racket
+(require "smk.rkt")
+(provide (all-defined-out))
+
 (define teacupo
   (lambda (x)
     (conde
@@ -235,6 +239,48 @@
     (conde
       (succeed)
       (g))))
+
+(define poso
+  (lambda (n)
+    (fresh (a d)
+      (== `(,a . ,d) n))))
+
+(define >1o
+  (lambda (n)
+    (fresh (a ad dd)
+      (== `(,a ,ad . ,dd) n))))
+
+; b + x + y = r + 2c
+(define full-addero
+  (lambda (b x y r c)
+    (fresh (w xy wz)
+      (half-addero x y w xy)
+      (half-addero w b r wz)
+      (bit-xoro xy wz c))))
+
+; x + y = r + 2c
+(define half-addero
+  (lambda (x y r c)
+    (all
+      (bit-xoro x y r)
+      (bit-ando x y c))))
+
+(define bit-xoro
+  (lambda (x y r)
+    (conde
+      ((== 0 x) (== 0 y) (== 0 r))
+      ((== 1 x) (== 0 y) (== 1 r))
+      ((== 0 x) (== 1 y) (== 1 r))
+      ((== 1 x) (== 1 y) (== 0 r)))))
+
+(define bit-ando
+  (lambda (x y r)
+    (conde
+      ((== 0 x) (== 0 y) (== 0 r))
+      ((== 1 x) (== 0 y) (== 0 r))
+      ((== 0 x) (== 1 y) (== 0 r))
+      ((== 1 x) (== 1 y) (== 1 r)))))
+
 
 (define identify
   (lambda (l)

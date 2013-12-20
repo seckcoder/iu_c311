@@ -2,6 +2,9 @@
 (load "utils.scm")
 
 (run* (q)
+  (== q #t))
+
+(run* (q)
   (listo `(a b ,q c)))
 
 (run 2 (q)
@@ -16,8 +19,6 @@
 (run* (q)
   (twinso '(tofu tofu))
   (== #t q))
-
-
 
 (run 2 (q)
   (membero 'e q))
@@ -76,7 +77,7 @@
 
 (run 2 (x)
   (fresh (y)
-    (appendo x y '())))
+    (appendo x y '(a))))
 
 (run* (x)
   (fresh (y z)
@@ -143,6 +144,12 @@
     (else ))
   (== #t q))
 
+
+(run* (r)
+  (conde
+    (fail)
+    ((== 'cup r))))
+
 (run 5 (r)
   (condi
     ((teacupo r))
@@ -174,3 +181,30 @@
     alwayso
     )
   (== #t q))
+
+(run* (q)
+  (>1o '(0 1 1))
+  (== #t q))
+
+(run* (q)
+  (poso '(0 1 1))
+  (== #t q))
+
+(run* (x)
+  (fresh (y z)
+    (== x y)
+    (== y z)
+    (== z x)))
+
+(run* (x)
+  (all
+    (conde
+      ((== x #f))
+      ((== x #t)))
+    (== x 'c)))
+
+(run* (q)
+  (conde
+    ((== q #f))
+    ((== q #t)))
+  (== q #t))

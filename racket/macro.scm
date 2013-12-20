@@ -86,4 +86,23 @@
 (check eq? (let ([if (lambda (x y z) #f)])
              (or #f 4)) 4)
 
+; introduce variables in macro
+
+(define-syntax fresh
+  (syntax-rules ()
+    ((_ (x) g)
+     (let ((x 'x))
+       (g)))))
+
+(fresh (x)
+  (lambda ()
+    (check eq? x 'x)))
+
+; what's the result of the following program?
+
+#|(fresh (v)
+  (lambda ()
+    (check eq? x 'x)))|#
+
+
 ; syntax-case...
