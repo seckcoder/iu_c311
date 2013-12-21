@@ -1,5 +1,5 @@
 #lang racket
-(require "smk1.rkt")
+(require "smk.rkt")
 (provide (all-defined-out))
 
 (define teacupo

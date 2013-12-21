@@ -55,6 +55,7 @@
             (s:take (- n 1)
                     (s:cdr l)))))
 
+
 (define (s:append s1 s2)
   (if (s:null? s1)
     s2

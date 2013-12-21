@@ -7,18 +7,21 @@
 (define var
   (lambda () (vector 'v)))
 (define var? vector?)
+(define var-eq? eq?)
 
 (define walk
   (lambda (v s)
     (if (not (var? v))
       v
-      (let ((ret (assoc v s)))
+      (let ((ret (assoc v s var-eq?)))
+        ; racket's assoc use equal? by default
         (if ret
           (walk (cdr ret) s)
           v)))))
 
 (define walk*
   (lambda (v s)
+    ; (printf "~a ~a\n" v s)
     (let ((v (walk v s)))
       (cond
         ((var? v) v)
@@ -106,8 +109,16 @@
        (let ((a ((all g ...) empty-s)))
          (s:!!
            (s:map (lambda (s)
+                    ;(println s)
                     (reify (walk* v s)))
-                  (s:take n a)))))]))
+                  (if (== n 0)
+                    a
+                    (s:take n a))))))]))
+
+(define-syntax run*
+  (syntax-rules ()
+    [(_ (v) g ...)
+     (run 0 (v) g ...)]))
 
 (define unit
   (lambda (s)
@@ -160,9 +171,10 @@
      (anye (all g^ g ...)
            (conde c ...))]))
 
-(run 1 (v)
-  (conde
-    ((== v #f))
-    ((== v #t)))
-  (== v #t))
 
+(define-syntax fresh
+  (syntax-rules ()
+    [(_ (v ...) g ...)
+     (lambda (s)
+       (let ((v (var)) ...)
+         ((all g ...) s)))]))
