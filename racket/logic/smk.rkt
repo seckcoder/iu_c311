@@ -1,5 +1,7 @@
 #lang racket
-(require "../lazy.rkt"
+;(require "../lazy.rkt"
+(require (prefix-in s: lazy)
+         (prefix-in s: "./lazy.rkt")
          "../base/utils.rkt")
 
 (provide (all-defined-out))
@@ -102,23 +104,30 @@
   (lambda (s)
     (not (null? s))))
 
+
+(define (m-take n lazy-s)
+  (let ((s (s:! lazy-s)))
+    (if (or (= n 0)
+            (s:empty? s))
+      '()
+      (cons (s:! (s:car s))
+            (m-take (- n 1)
+                    (s:cdr s))))))
+
 (define-syntax run
   (syntax-rules ()
     [(_ n (v) g ...)
      (let ((v (var)))
        (let ((a ((all g ...) empty-s)))
-         (s:!!
+         (m-take n
            (s:map (lambda (s)
-                    ;(println s)
                     (reify (walk* v s)))
-                  (if (== n 0)
-                    a
-                    (s:take n a))))))]))
+                  a))))]))
 
 (define-syntax run*
   (syntax-rules ()
     [(_ (v) g ...)
-     (run 0 (v) g ...)]))
+     (run -1 (v) g ...)]))
 
 (define unit
   (lambda (s)
@@ -151,8 +160,8 @@
      ; and combination
      (lambda (s)
        (s:flatmap (lambda (s)
-                       ((all g ...) s))
-                     (g^ s)))]))
+                    ((all g ...) s))
+                  (g^ s)))]))
 
 (define-syntax anye
   (syntax-rules ()
@@ -160,7 +169,7 @@
      ; or combination
      (lambda (s)
        (s:append (g1 s)
-                    (g2 s)))]))
+                 (g2 s)))]))
 
 (define-syntax conde
   (syntax-rules ()

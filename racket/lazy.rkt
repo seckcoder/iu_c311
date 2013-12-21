@@ -4,6 +4,16 @@
 
 (provide (all-defined-out))
 
+;; There is a problem with the library.
+;; For the following demo:
+;; (s:map (lambda (s)
+;;           s)
+;;        (s:take n lazy-stream))
+;; if lazy-stream is infinite, then it will cause
+;; infinite loop. The problem here is that map
+;; 's arguments are not stricly lazy. They will be
+;; evaluated.
+          
 (define-syntax s:cons
   (syntax-rules ()
     [(_ a d)
@@ -37,15 +47,6 @@
         (s:cons v (s:filter p (s:cdr l)))
         (s:filter p (s:cdr l))))))
 
-(define (s:foldl p acc . args)
-  (let loop ((acc acc)
-             (args args))
-    (if (s:null? (car args))
-      acc
-      (loop (apply p
-                   (append (map s:car args)
-                           (list acc)))
-            (map s:cdr args)))))
 
 (define (s:take n l)
   (if (or (= n 0)
@@ -56,18 +57,24 @@
                     (s:cdr l)))))
 
 
-(define (s:append s1 s2)
+(define (s:append1 s1 s2)
   (if (s:null? s1)
-    s2
+    (force s2)
     (s:cons (s:car s1)
-            (s:append (s:cdr s1)
-                      s2))))
+            (s:append1 (s:cdr s1)
+                       s2))))
+
+; this version works even when s1 is infinite stream
+(define-syntax s:append
+  (syntax-rules ()
+    [(_ s1 s2)
+     (s:append1 s1 (delay s2))]))
 
 (define (s:flatmap p l)
-  (s:foldl (lambda (v acc)
-             (s:append acc (p v)))
-           '()
-           l))
+  (if (s:null? l)
+    '()
+    (s:append (p (s:car l))
+              (s:flatmap p (s:cdr l)))))
 
 (define (s:list-ref l n)
   (let loop ((l l)
@@ -122,4 +129,6 @@
                                     (= (modulo v 2) 0))
                                   lst))
                         '(2 4))
+    (check-equal? (s:list-ref (s:flatmap (lambda (v) (list v)) s:ones)
+                              10) 1)
     ))
