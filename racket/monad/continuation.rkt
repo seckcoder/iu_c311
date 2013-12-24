@@ -69,7 +69,52 @@
             ; (f a) return mb, which is a procedure
             ((f a) k))))))
 
-((rember-evens '((1 2) 3 4 (5 6) 7 8)) (lambda (v)
-                         v))
+#|((rember-evens '((1 2) 3 4 (5 6) 7 8)) (lambda (v)
+                         v))|#
 
-;(((rember-evens '((1 2) 3 4 (5 6) 7 8)) (lambda (v) v)) (lambda (v) v))
+
+; call/cc
+
+(define product
+  (lambda (ls exit)
+    (cond
+      ((null? ls) (unit 1))
+      ((list? (car ls))
+       (bind (product (car ls) exit)
+             (lambda (a)
+               (bind
+                 (product (cdr ls) exit)
+                 (lambda (d)
+                   (unit (* a d)))))))
+      ((zero? (car ls))
+       (bind (exit 0)
+             (lambda (_)
+               ; This piece of code is just for verification purpose
+               (printf "not evaluted code\n")
+               (unit (sub1 _)))))
+      (else
+        (bind (product (cdr ls) exit)
+              (lambda (d)
+                (unit (* (car ls) d)))))
+      )))
+
+(define callcc
+  (lambda (f)
+    (lambda (k)
+      (let ((k-as-proc (lambda (a)
+                         (lambda (k-ignored)
+                           (k a)))))
+        ((f k-as-proc) k)))))
+
+((callcc (lambda (out-k)
+           (product '() out-k)))
+ (lambda (v)
+   (printf "k\n")
+   v))
+
+
+((bind (callcc (lambda (out)
+                 (product '() out)))
+       (lambda (a)
+         (unit (add1 a))))
+ (lambda (x) x))

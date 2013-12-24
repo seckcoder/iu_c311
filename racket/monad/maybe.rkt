@@ -1,6 +1,10 @@
 #lang racket
 (require "utils.rkt")
 
+(provide return-maybe
+         bind-maybe
+         fail)
+
 ; Maybe monad demo
 ; Understanding Maybe Monad:
 ; 1. Why do we need monad?
@@ -77,4 +81,4 @@
       (x <- (divide-maybe x c))
       (return-maybe x))))
 
-(divide-multi3 2 1 3)
+; (divide-multi3 2 1 3)
