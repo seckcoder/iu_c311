@@ -27,6 +27,10 @@
   (lambda-exp
     (vars (list-of symbol?))
     (body expression?))
+  (let-exp
+    (var symbol?)
+    (val-exp expression?)
+    (body expression?))
   (letrec-exp
     (p-names (list-of symbol?))
     (procs (list-of expression?))
@@ -58,6 +62,10 @@
     [`(lambda (,params ...) ,body)
       (lambda-exp params
                   (parse body))]
+    [`(let ((,var ,val)) ,body)
+      (let-exp var
+               (parse val)
+               (parse body))]
     [`(letrec ((,names ,procs) ...) ,body)
       (letrec-exp names
                   (map parse procs)

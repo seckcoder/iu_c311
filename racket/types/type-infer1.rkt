@@ -138,6 +138,13 @@
               [(list else-type subst)
                (list then-type
                      (unify subst then-type else-type exp))])])]))
+    (let-exp
+      (var val-exp body)
+      ;TODO: implement let polymorphism
+      (match (typeof/subst val-exp env subst)
+        [(list val-type subst)
+         (let ((new-env (extend-env var (newref val-type) env)))
+           (typeof/subst body new-env subst))]))
     (letrec-exp
       (p-names procs body)
       (let* ((p-typevars (map (lambda (_) (typevar)) p-names))
@@ -199,6 +206,7 @@
           ((typevar? ty2)
            (loop ty2 ty1))
           (else
+            ; both are proc type
             (foldl (lambda (equation subst)
                      (match equation
                        [(list ty1 ty2)
@@ -311,7 +319,15 @@
   ; fail occurrence check
   #|(test-typeof '(lambda (f)
                     (f f)))|#
+  #|(test-typeof '(lambda (f)
+                  (+ (f #t) (f 1))))|#
+  ; let polymorphism
+  (test-typeof 
+    '(let ((f (lambda (v) v)))
+       (list (f 1) (f #f))))
 
-  (test-typeof '(lambda (f)
-                  (+ (f #t) (f 1))))
+  ; another test case for let polymorphism
+  (lambda (g)
+    (let ((f g))
+      (list (f 1) (f #f))))
   )
