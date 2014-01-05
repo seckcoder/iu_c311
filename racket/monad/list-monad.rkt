@@ -3,7 +3,7 @@
 
 ; Demo of list monad
 
-; list monad
+; list monad(for backtracking)
 (define unit
   (lambda (a)
     `(,a)))

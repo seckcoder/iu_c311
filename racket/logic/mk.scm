@@ -180,8 +180,6 @@
     ((_ a f) (cons a f))))
 
 (define map-inf
-  ; n =n p = (lambda (s) (reify (walk* x s)))
-  ; a-inf = ((all g ...) empty-s)
   (lambda (n p a-inf)
     (case-inf a-inf
       '()
@@ -216,8 +214,6 @@
        (let ((x (var 'x)) ...)
          ((all g ...) s))))))
 
-; transform to a goal that only succeed when
-; all g succeed
 (define-syntax all
   (syntax-rules ()
     ((_) succeed)
@@ -239,42 +235,22 @@
 
 (define fail (lambdag@ (s) (mzero)))
 
-; a-inf * g -> a-inf
-; if a-inf == #f (previously, something failed)
-; then everything following failed
-; elif this line is exhausted, then we go to the next
-; else expand ...
-; create a goal driver.
-;   failed -> failed
-;   subst -> apply next constraint
-;   subst ... -> apply next constraint
 (define bind
   (lambda (a-inf g)
-    ; (printf "bind called ~a\n" a-inf)
     (case-inf a-inf
-      (mzero)  ; fail
-      ((a) (g a)) ; a is a single subst
-      ((a f) (mplus (g a) ; a-inf = (subst rest ...)
+      (mzero)
+      ((a) (g a))
+      ((a f) (mplus (g a)
                (lambdaf@ () (bind (f) g)))))))
-
-; concatenate a stream:a-inf with another returned by f
-; a-inf * f -> a-inf
-; a-inf = #f -> failed
-;       | subst -> exhausted
-;       | (subst ...)
 
 (define mplus
   (lambda (a-inf f)
-    ; (printf "mplus called :~a\n" a-inf)
     (case-inf a-inf
-      (f)  ; a-inf failed, switch to f
-      ((a) (choice a f)) ; cons a f
+      (f)
+      ((a) (choice a f))
       ((a f0) (choice a 
                 (lambdaf@ () (mplus (f0) f)))))))
 
-; if g1 succeed, then return g1's subst, at the same
-; time concantenate g2's(think g2's as the further candidate)
-; if g2 failed, then start exhaust g2's subst.
 (define-syntax anye
   (syntax-rules ()
     ((_ g1 g2) 

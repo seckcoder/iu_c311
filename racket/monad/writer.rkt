@@ -26,6 +26,7 @@
 
 (define bind-writer
   (lambda (ma f)
+    ; f:sequel; used for outside to compute f(a,b)
     (let ((mb (f (car ma))))
       `(,(car mb) . ,(append (cdr ma) (cdr mb))))))
 
