@@ -42,10 +42,9 @@
     (val expression?))
   (module-exp
     (mname symbol?)
-    (vars1 (list-of symbol?))
+    (vars (list-of symbol?))
     (types (list-of type?))
-    (vars2 (list-of symbol?))
-    (vals (list-of expression?)))
+    (bodies (list-of expression?)))
   (import-exp
     (mname symbol?))
   )
@@ -114,12 +113,11 @@
       ]
     [`(module ,mname
         (sig (,vars1 ,types) ...)
-        (body (,vars2 ,vals) ...))
+        (body ,bodies ...))
       (module-exp mname
                   vars1
                   types
-                  vars2
-                  (map parse vals))]
+                  (map parse bodies))]
     [`(import ,mod)
       (import-exp mod)]
     ; procedure call

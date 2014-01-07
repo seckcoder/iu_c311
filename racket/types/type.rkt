@@ -34,6 +34,24 @@
 (define (modtype vars types)
   `(mod type ,vars ,types))
 
+(define (modtype? t)
+  (match t
+    [`(mod type ,vars ,types) #t]
+    [_ #f]))
+
+(define (proctype? t)
+  (match t
+    [(list types t) #t]
+    [_ #f]))
+
+(define (proctype-vars t)
+  (match t
+    [(list types t) types]))
+
+(define (proctype-ret t)
+  (match t
+    [(list types t) t]))
+
 (define typevar
   (let ((n -1))
     (lambda ()
@@ -54,7 +72,7 @@
        (symbol->string type)]
       [`(mod type ,vars ,types)
         (format "module: ~a" (map (lambda (var type)
-                                    (format "~a : ~s" var (type->str type)))
+                                    (format "~a : ~a" var (type->str type)))
                                   vars
                                   types))]
       [(list (list (? symbol? type)) ret-type)
