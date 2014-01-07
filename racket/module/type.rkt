@@ -164,6 +164,11 @@
            type
            subst)))
 
+; exp * env * subst -> type * (var list) * env subst
+; (var list): The list of new vars introduced by the exp. Only `define`
+;             and `module` will introduce new var
+; env : new env extended from the input env (the extended vars are (var list))
+; subst : new substitution
 (define (typeof/subst exp env subst)
   (cases expression exp
     (const-exp
