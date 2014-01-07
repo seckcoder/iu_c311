@@ -44,10 +44,9 @@
 (define (equa left right)
   (list left right))
 
+
 ; unify ty1=ty2 to substitution
 (define (unify subst ty1 ty2 exp)
-  ; (print-subs subst)
-  ; (printf "~a ~a\n" (prtype ty1) (prtype ty2))
   (let loop ((ty1 (apply-subst-to-type subst ty1))
              (ty2 (apply-subst-to-type subst ty2)))
     (cond ((equal? ty1 ty2)
@@ -92,6 +91,7 @@
              [(or (? modtype? ty2))
               (unify-mod subst ty1 ty2 exp)]))
           )))
+
 
 ; We assume ty1 <: ty2
 (define (unify-mod subst ty1 ty2 exp)
