@@ -312,7 +312,9 @@
   (test-typeof '(begin
                   (module m1
                     (sig
-                      (u int))
+                      (u int)
+                      (v int)
+                      )
                     (body
                       (u 3)))
                   (import m1)
