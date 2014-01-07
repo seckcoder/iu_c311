@@ -22,6 +22,8 @@
          tail
          flatmap
          safe-take
+         apply-base-ns
+         sym-append
          )
 
 (define anything?
@@ -51,7 +53,7 @@
      (let ((va a)
            (vb b))
        (if (not (pred va vb))
-         (error 'check "~s:~s not ~s ~s:~s" `a va `pred `b vb)
+         (error 'check "~a is not ~a to ~a\n\t~a not ~a ~a\n" `a `pred `b va `pred vb)
          'ok))]))
 
 (define list-n
@@ -149,3 +151,18 @@
       (cons (car lst)
             (safe-take (cdr lst)
                        (- n 1))))))
+
+(define (apply-base-ns op rands)
+  (apply (eval op (make-base-namespace))
+         rands))
+
+(define sym-append
+  (lambda syms
+    (string->symbol
+      (foldl
+        (lambda (sym s)
+          (string-append
+            s
+            (symbol->string sym)))
+        ""
+        syms))))

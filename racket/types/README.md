@@ -22,3 +22,5 @@ and letrec.
 ;(letrec (((funcname rettype) lambda-exp)) body)
 
 ```
+
+For an improved type inferer(with less bugs), refer to `module`

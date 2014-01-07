@@ -158,6 +158,7 @@
     ))
 
 ; apply subst to type(replace type with bindings)
+; or lookup type in subst
 (define (apply-subst-to-type subst type)
   (if (simpletype? type)
     type  ; a tiny optimization. only apply for non simpletype(eopl 7.20)
