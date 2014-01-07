@@ -59,10 +59,7 @@
            subst)
           ((and (simpletype? ty1)
                 (simpletype? ty2))
-           (error 'unify "type error for expression:~s" exp))
-          ((or (simpletype? ty1)
-               (simpletype? ty2))
-           (error 'unify "type error for expression:~s" exp))
+           (error 'unify "type error for expression:~s; ~a not equal ~a" exp ty1 ty2))
           ((typevar? ty1)
            ; ty1 is typevar
            (if (occurs? ty1 ty2)
@@ -70,14 +67,21 @@
              (extend-subst subst ty1 ty2)))
           ((typevar? ty2)
            (loop ty2 ty1))
-          (else
+          ; both are not typevar and only one of them is simple type
+          ((or (simpletype? ty1)
+               (simpletype? ty2))
+           (error 'unify "type error for expression:~s; ~a not equal ~a" exp ty1 ty2))
+          ((and (proctype? ty1)
+                (proctype? ty2))
             ; both are proc type
             (foldl (lambda (equation subst)
                      (match equation
                        [(list ty1 ty2)
                         (unify subst ty1 ty2 exp)]))
                    subst
-                   (match-type ty1 ty2))))))
+                   (match-type ty1 ty2)))
+          (
+          )))
 
 ; substitution of a type for a type variable. type[sym = new-type]
 (define replace
@@ -240,7 +244,7 @@
                      (lambda (var type subst)
                        (match (assq var type-pairs)
                          [#f
-                          (error "interface declaration ~s = ~s is not exist in module:~s"
+                          (error 'typeof "interface declaration ~s = ~s is not exist in module:~s"
                                  var type mname)]
                          [(list var2 val val-type)
                            (unify subst
@@ -250,11 +254,15 @@
                      subst
                      vars1
                      types)))
-             (list 'void
-                   (extend-env mname
-                               (newref (modtype vars1 types))
-                               env)
-                   subst)))]))
+             (let ((mod-type-var (typevar)))
+               (list mod-type-var
+                     (extend-env mname
+                                 (newref mod-type-var)
+                                 env)
+                     (unify subst
+                            mod-type-var
+                            (modtype vars1 types)
+                            exp)))))]))
     (import-exp
       (mname)
       (list 'void
@@ -275,7 +283,7 @@
 
 (define (import-mod mname env)
   (match (deref (apply-env env mname))
-    [`(module ,vars ,types)
+    [`(mod type ,vars ,types)
       (extend-envs (map (lambda (var)
                           (sym-append mname ': var))
                         vars)
@@ -309,14 +317,44 @@
                   (define v 3)
                   (lambda (v)
                     v)))|#
+  #|(test-typeof '(begin
+                  (module m1
+                    (sig
+                      (u int)
+                      )
+                    (body
+                      (u 3)))
+                  (module m1
+                    (sig
+                      (u bool))
+                    (body
+                      (u #t)))
+                  (import m1)
+                  m1:u))|#
   (test-typeof '(begin
                   (module m1
                     (sig
                       (u int)
-                      (v int)
+                      (m2 (mod type
+                            (v f)
+                            (int ((int) int))))
                       )
                     (body
-                      (u 3)))
+                      (define u 3)
+                      (module m2
+                        (sig
+                          (v int)
+                          (f ((int) int)))
+                        (body
+                          (v 4)
+                          (f (lambda (v)
+                               (+ v 3)))))
+                      ; no effect
+                      (let ((f (lambda (v) v)))
+                        (f u))
+                      (import m2)
+                      (define v m2:v)))
                   (import m1)
-                  m1:u))
+                  (import m1:m2)
+                  (= m1:m2:v m1:v)))
   )

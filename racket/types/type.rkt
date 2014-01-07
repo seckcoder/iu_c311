@@ -22,7 +22,7 @@
 (define (type? t)
   (match t
     [(or 'void 'int 'str 'bool 'atom 'list) #t]
-    [`(module ,vars ,types)
+    [`(mod type ,vars ,types)
       (andmap type? types)]
     [(list types t)
      (andmap type? (cons t types))]
@@ -32,7 +32,7 @@
   `(,var-type ,ret-type))
 
 (define (modtype vars types)
-  `(module ,vars ,types))
+  `(mod type ,vars ,types))
 
 (define typevar
   (let ((n -1))
@@ -52,7 +52,7 @@
     (match type
       [(? symbol? type)
        (symbol->string type)]
-      [`(module ,vars ,types)
+      [`(mod type ,vars ,types)
         (format "module: ~a" (map (lambda (var type)
                                     (format "~a : ~s" var (type->str type)))
                                   vars

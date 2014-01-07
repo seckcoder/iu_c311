@@ -32,3 +32,6 @@ after you unifying the expression, you don't know the output
 binding variable of the compound exp, so you can't check the interface
 type declaration. Therefore, the body part should not be interpreted
 as a compound exp(like ml) or we should not declare types for interface(like racket)
+
+eopl 8.5: This is a poor design for my type-infer system. It breaks the consistency of
+code.
