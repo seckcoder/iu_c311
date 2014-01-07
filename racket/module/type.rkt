@@ -17,7 +17,7 @@
     (if (null? exps)
       (list (reverse rev-exp-types) subst)
       (match (typeof/subst (car exps) env subst)
-        [(list exp-type _ _ subst)
+        [(TypeRet exp-type _ _ subst)
          (loop (cons exp-type rev-exp-types) subst (cdr exps))]))))
 
 ; for compound exps
@@ -25,11 +25,11 @@
   (foldl
     (lambda (exp acc)
       (match acc
-        [(list t vars env subst)
+        [(TypeRet t vars env subst)
          (match (typeof/subst exp env subst)
-           [(list t vars1 env subst)
-            (list t (append vars vars1) env subst)])]))
-    (list 'void '() env subst)
+           [(TypeRet t vars1 env subst)
+            (TypeRet t (append vars vars1) env subst)])]))
+    (TypeRet 'void '() env subst)
     exps))
 
 (define (unify-multi subst types1 types2 exp)
@@ -164,6 +164,8 @@
            type
            subst)))
 
+(struct TypeRet (type vars env subst))
+
 ; exp * env * subst -> type * (var list) * env subst
 ; (var list): The list of new vars introduced by the exp. Only `define`
 ;             and `module` will introduce new var
@@ -173,26 +175,23 @@
   (cases expression exp
     (const-exp
       (cst)
-      (list (typeof-const cst)
-            '()
-            env
-            subst))
+      (TypeRet (typeof-const cst) '() env subst))
     (var-exp
       (var)
-      (list (deref (apply-env env var))
+      (TypeRet (deref (apply-env env var))
             '()
             env
             subst))
     (quote-exp
       (sexp)
-      (list (typeof-sexp sexp)
+      (TypeRet (typeof-sexp sexp)
             '()
             env
             subst))
     (op-exp
       (op rands)
       (let ((typeof-op (lambda (op-rand-types op-ret-type)
-                         (list op-ret-type
+                         (TypeRet op-ret-type
                                '()
                                env
                                (match (typeof-multi/subst rands env subst)
@@ -223,8 +222,8 @@
              (lambda-tvar (typevar))
              (new-env (extend-envs params (newrefs param-tvars) env)))
         (match (typeof/subst body new-env subst)
-          [(list body-type _ _ new-subst)
-           (list lambda-tvar
+          [(TypeRet body-type _ _ new-subst)
+           (TypeRet lambda-tvar
                  '()
                  env
                  (unify new-subst
@@ -235,12 +234,12 @@
     (if-exp
       (test then else)
       (match (typeof/subst test env subst)
-        [(list test-type _ _ subst)
+        [(TypeRet test-type _ _ subst)
          (match (typeof/subst then env (unify subst test-type 'bool exp))
-           [(list then-type _ _ subst)
+           [(TypeRet then-type _ _ subst)
             (match (typeof/subst else env subst)
-              [(list else-type _ _ subst)
-               (list then-type
+              [(TypeRet else-type _ _ subst)
+               (TypeRet then-type
                      '()
                      env
                      (unify subst then-type else-type exp))])])]))
@@ -255,39 +254,39 @@
                          new-env
                          (unify-multi subst p-typevars p-types exp)
                          )
-             [(list body-type _ _ subst)
-              (list body-type '() env subst)])])))
+             [(TypeRet body-type _ _ subst)
+              (TypeRet body-type '() env subst)])])))
     (compound-exp
       (exps)
       (typeof-compound/subst exps env subst))
     (set-exp
       (var val)
       (match (typeof/subst val env subst)
-        [(list val-type _ _ subst)
+        [(TypeRet val-type _ _ subst)
          (let* ((var-type (deref (apply-env env var)))
                 (subst (unify subst var-type val-type exp)))
-           (list 'void '() env subst))]))
+           (TypeRet 'void '() env subst))]))
     (define-exp
       (var val)
       (let* ((tvar (typevar))
              (new-env (extend-env var (newref tvar) env)))
         (match (typeof/subst val new-env subst)
-          [(list val-type _ _ subst)
-           (list 'void
+          [(TypeRet val-type _ _ subst)
+           (TypeRet 'void
                  (list var)
                  new-env
                  (unify subst tvar val-type exp))])))
     (module-exp
       (mname vars types bodies)
       (match (typeof-compound/subst bodies env subst)
-        [(list _ body-vars new-env subst)
+        [(TypeRet _ body-vars new-env subst)
          (let ((mod-sig-type (modtype vars types))
                (mod-body-type (modtype body-vars (map (lambda (var)
                                    (deref (apply-env new-env var)))
                                  body-vars))))
            (let ((subst (unify subst mod-sig-type mod-body-type exp)))
              (let ((mod-type-var (typevar)))
-               (list mod-type-var
+               (TypeRet mod-type-var
                      (list mname)
                      (extend-env mname
                                  (newref mod-type-var)
@@ -298,16 +297,16 @@
                             exp)))))]))
     (import-exp
       (mname)
-      (list 'void
+      (TypeRet 'void
             '()
             (import-mod mname env subst)
             subst))
     (call-exp
       (rator rands)
       (match (typeof/subst rator env subst)
-        [(list rator-type _ _ subst)
+        [(TypeRet rator-type _ _ subst)
          (let ((exp-tvar (typevar)))
-           (list exp-tvar
+           (TypeRet exp-tvar
                  '()
                  env
                  (match (typeof-multi/subst rands env subst)
@@ -328,7 +327,7 @@
 (define (typeof exp)
   (initialize-store!)
   (match (typeof/subst (parse exp) (empty-env) '())
-    [(list type _ _ subst)
+    [(TypeRet type _ _ subst)
      (apply-subst-to-type subst type)]))
 
 (module+ test
@@ -358,7 +357,7 @@
                   (body
                     (define u 3)
                     (define v 5))))|#
-  #|(test-typeof '(begin
+  (test-typeof '(begin
                   (module m1
                     (sig
                       (u int)
@@ -384,5 +383,5 @@
                   (import m1)
                   (import m1:m2)
                   m1:m2:v
-                  ))|#
+                  ))
   )
