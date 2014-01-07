@@ -358,7 +358,7 @@
                   (body
                     (define u 3)
                     (define v 5))))|#
-  (test-typeof '(begin
+  #|(test-typeof '(begin
                   (module m1
                     (sig
                       (u int)
@@ -384,5 +384,5 @@
                   (import m1)
                   (import m1:m2)
                   m1:m2:v
-                  ))
+                  ))|#
   )
