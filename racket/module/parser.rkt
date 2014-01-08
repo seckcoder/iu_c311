@@ -43,7 +43,7 @@
   (module-exp
     (mname symbol?)
     (vars (list-of symbol?))
-    (types (list-of type?))
+    (types (list-of Type?))
     (bodies (list-of expression?)))
   (import-exp
     (mname symbol?))
@@ -116,7 +116,7 @@
         (body ,bodies ...))
       (module-exp mname
                   vars1
-                  types
+                  (map sym->type types)
                   (map parse bodies))]
     [`(import ,mod)
       (import-exp mod)]

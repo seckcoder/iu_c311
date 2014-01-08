@@ -24,6 +24,9 @@
          safe-take
          apply-base-ns
          sym-append
+         combine
+         allf
+         anyf
          )
 
 (define anything?
@@ -166,3 +169,43 @@
             (symbol->string sym)))
         ""
         syms))))
+
+(define combine
+  (match-lambda*
+    [(list f) f]
+    [(list f f* ...)
+     (lambda (v)
+       ((apply combine f*) (f v)))]))
+
+(define allf
+  (match-lambda*
+    [(list) (lambda (v) #t)]
+    [(list f0 f* ...)
+     (lambda (v)
+       (and (f0 v)
+            ((apply allf f*) v)))]))
+
+(define anyf
+  (match-lambda*
+    [(list) (lambda (v) #f)]
+    [(list f0 f* ...)
+     (lambda (v)
+       (or (f0 v)
+           ((apply anyf f*) v)))]))
+
+(module+ test
+  (require rackunit)
+  ((combine (lambda (v) v)
+            (lambda (v) v)
+            (lambda (v) v))
+   3)
+  ((allf (lambda (v) (> v 0))
+         (lambda (v) (< v 10))
+         (lambda (v) (even? v))) 4)
+  ((anyf (lambda (v) (= v 1))
+         (lambda (v) (= v 2))
+         (lambda (v) (= v 3))) 3)
+  ((anyf (lambda (v) (= v 1))
+         (lambda (v) (= v 2))
+         (lambda (v) (= v 3))) 0)
+  )

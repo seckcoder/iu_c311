@@ -6,10 +6,17 @@
 
 (provide (all-defined-out))
 
+(define (is-const? v)
+  (or (number? v)
+      (boolean? v)
+      (string? v)
+      (null? v)
+      (void? v)
+      ))
 (define-datatype
   expression expression?
   (const-exp
-    (cst const?))
+    (cst is-const?))
   (var-exp
     (var symbol?))
   (quote-exp
