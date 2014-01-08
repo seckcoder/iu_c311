@@ -8,81 +8,100 @@
 
 ;types
 
-(define (typeof-const v)
-  (cond ((number? v) 'int)
-        ((string? v) 'str)
-        ((boolean? v) 'bool)
-        (else #f)))
+(struct Type () #:transparent)
+(struct Num Type () #:transparent)
+(struct Str Type () #:transparent)
+(struct Bool Type () #:transparent)
+(struct Atom Type () #:transparent)
+(struct Nil Type () #:transparent) ; used for empty list
+; The intf for guard of struct can be improved
+(define type-guard
+  (match-lambda*
+    [(list v* ... type-name)
+     (if ((list-of Type?) v*)
+       (apply values v*)
+       (error type-name "bad type value:~a" v*))]))
+(struct Pair Type (a d)
+        #:transparent
+        #:guard type-guard)
+(struct Fun Type (vts rt)
+        #:transparent
+        #:guard (lambda (vts rt type-name)
+                  (if (andmap Type? (cons rt vts))
+                    (values vts rt)
+                    (error type-name "bad type value:~a ~a" vts rt))))
+(struct Mod Type (vars types)
+        #:transparent
+        #:guard (lambda (vars types type-name)
+                  (if (and ((list-of symbol?) vars)
+                           ((list-of Type?) types)
+                           (= (length vars)
+                              (length types)))
+                    (values vars types)
+                    (error type-name "bad type value:~a ~a" vars types))))
 
-(define (typeof-sexp v)
-  (cond ((atom? v) 'atom)
-        ((list? v) 'list)
-        (else #f)))
+; TypeVar
+(struct Var Type (v))
 
-(define (type? t)
-  (match t
-    [(or 'void 'int 'str 'bool 'atom 'list) #t]
-    [`(mod type ,vars ,types)
-      (andmap type? types)]
-    [(list types t)
-     (andmap type? (cons t types))]
-    ))
+(define (typeof-simple v)
+  (match v
+    [(? number? v) (Num)]
+    [(? string? v) (Str)]
+    [(? boolean? v) (Bool)]
+    [(? atom? v) (Atom)]
+    [(? null? v) (Nil)]
+    [(? list? v) (Pair (typeof-simple (car v))
+                       (typeof-simple (cdr v)))]))
 
-(define (proctype var-type ret-type)
-  `(,var-type ,ret-type))
+; Function and Module are composite/complex type
+(define (simple? t)
+  (combine Pair? Nil? Atom? Bool? Str? Num?))
 
-(define (modtype vars types)
-  `(mod type ,vars ,types))
-
-(define (modtype? t)
-  (match t
-    [`(mod type ,vars ,types) #t]
-    [_ #f]))
-
-(define (proctype? t)
-  (match t
-    [(list types t) #t]
-    [_ #f]))
-
-(define (proctype-vars t)
-  (match t
-    [(list types t) types]))
-
-(define (proctype-ret t)
-  (match t
-    [(list types t) t]))
-
-(define typevar
-  (let ((n -1))
-    (lambda ()
-      (set! n (+ n 1))
-      (string->symbol (string-append "t" (number->string n)))
-      )))
-
-(define typevar?
-  (lambda (type)
-    (and (symbol? type)
-         (char=? (string-ref (symbol->string type) 0)
-                 #\t))))
-
-(define type->str
+; for type declaration
+(define type->sym
   (lambda (type)
     (match type
-      [(? symbol? type)
-       (symbol->string type)]
-      [`(mod type ,vars ,types)
-        (format "module: ~a" (map (lambda (var type)
-                                    (format "~a : ~a" var (type->str type)))
-                                  vars
-                                  types))]
-      [(list (list (? symbol? type)) ret-type)
-       ; tiny optimization, erase bracket for some cases
-       (format "~a -> ~a" type ret-type)]
-      [(list (list types ...) ret-type)
-       (format "~a -> ~a" (map type->str types) (type->str ret-type))]
+      [(Num) 'int]
+      [(Str) 'str]
+      [(Bool) 'bool]
+      [(Atom) 'atom]
+      [(Nil) '()]
+      [(Pair a d)
+       (cons (type->sym a) (type->sym d))]
+      [(Fun vts rt)
+       `(,(map type->sym vts) -> ,(type->sym rt))]
+      [(Mod vars types)
+       `(mod ,vars ,(map type->sym types))]
       )))
 
-(define (simpletype? t)
-  (match t
-    [(or 'void 'int 'str 'bool 'atom 'list) #t]
-    [_ #f]))
+(define sym->type
+  (lambda (sym)
+    (match sym
+      ['int (Num)]
+      ['str (Str)]
+      ['bool (Bool)]
+      ['atom (Atom)]
+      [(list) (Nil)]
+      [(list vts '-> t)
+       (Fun (map sym->type vts)
+            (sym->type t))]
+      [`(mod ,vars ,types)
+        (Mod vars (map sym->type types))]
+      [(cons a d)
+       (Pair (sym->type a)
+             (sym->type d))]
+      )))
+
+(module+ test
+  (define (test-type-sym t)
+    (check equal?
+           (type->sym (sym->type t))
+           t))
+  (test-type-sym '((int) -> int))
+  (test-type-sym '((int bool) -> int))
+  (test-type-sym '())
+  (test-type-sym '(mod (v f)
+                       (int ((int) -> int))))
+  (test-type-sym '(int int . int))
+  (test-type-sym '(int int))
+  )
