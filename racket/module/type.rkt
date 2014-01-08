@@ -59,7 +59,7 @@
                 (? Mod?)
                 (? Pair?))
             (error 'unify "type error for expression:~s; ~a not equal ~a" exp ty1 ty2)]
-           [(? Var? ty2)
+           [(? Var?)
             (loop ty2 ty1)])]
         [(? Var?)
          (if (occurs? ty1 ty2)
@@ -104,7 +104,10 @@
             (unify-mod subst ty1 ty2 exp)])]
         ))))
 
-; We assume ty1 <: ty2
+; Que:
+; 1. How to unify the signature and the body when an transparent type or opague
+; type in signature corresponds to an opague type?
+; 2. The order of ty1 and ty2 is important here(ty1 :< ty2). Any method to solve this?
 (define (unify-mod subst ty1 ty2 exp)
   (match ty1
     [(Mod vars1 types1)
@@ -280,7 +283,7 @@
                 (error 'typeof/subst "op:~s not supported" op)))))
     (lambda-exp
       (params body)
-      (let* ((param-tvars (map (lambda (v) (Var (typevar))) params))
+      (let* ((param-tvars (map (lambda (v) (gen-type-var)) params))
              (new-env (extend-envs params (newrefs param-tvars) env)))
         (match (typeof/subst body new-env subst)
           [(TypeRet body-type _ _ new-subst)
@@ -303,7 +306,7 @@
                         (unify subst then-type else-type exp))])])]))
     (letrec-exp
       (p-names procs body)
-      (let* ((p-typevars (map (lambda (_) (Var (typevar))) p-names))
+      (let* ((p-typevars (map (lambda (_) (gen-type-var)) p-names))
              (new-env (extend-envs p-names (newrefs p-typevars) env)))
         (match (typeof-multi/subst procs new-env subst)
           [(list p-types subst)
@@ -326,7 +329,7 @@
            (TypeRet (Unit) '() env subst))]))
     (define-exp
       (var val)
-      (let* ((tvar (Var (typevar)))
+      (let* ((tvar (gen-type-var))
              (new-env (extend-env var (newref tvar) env)))
         (match (typeof/subst val new-env subst)
           [(TypeRet val-type _ _ subst)
@@ -335,41 +338,60 @@
                     new-env
                     (unify subst tvar val-type exp))])))
     (module-exp
-      (mname vars types bodies)
-      (match (typeof-compound/subst bodies env subst)
-        [(TypeRet _ body-vars new-env subst)
-         (let ((mod-sig-type (Mod vars types))
-               (mod-body-type (Mod body-vars (map (lambda (var)
-                                                    (deref (apply-env new-env var)))
-                                                  body-vars))))
-           (let ((subst (unify subst mod-sig-type mod-body-type exp)))
-             (let ((mod-type-var (Var (typevar))))
-               (TypeRet mod-type-var
-                        (list mname)
-                        (extend-env mname
-                                    (newref mod-type-var)
-                                    env)
-                        (unify subst
-                               mod-type-var
-                               (Mod vars types)
-                               exp)))))]))
+      (mname sigs bodies)
+      (match (typeof-compound/subst sigs env subst)
+        [(TypeRet _ sig-vars sig-env subst)
+         (match (typeof-compound/subst bodies env subst)
+           [(TypeRet _ body-vars body-env subst)
+            (let* ((sig-types (apply-envs sig-env sig-vars deref))
+                   (mod-sig-type (Mod sig-vars sig-types))
+                   (body-types (apply-envs body-env body-vars deref))
+                   (mod-body-type (Mod body-vars body-types))
+                   (subst (unify-mod subst mod-sig-type mod-body-type exp))
+                   (mod-type-var (gen-type-var)))
+              (TypeRet mod-type-var
+                       (list mname)
+                       (extend-env mname
+                                   (newref mod-type-var)
+                                   env)
+                       (unify subst
+                              mod-type-var
+                              mod-sig-type
+                              exp)))])]))
     (import-exp
       (mname)
       (TypeRet (Unit)
                '()
                (import-mod mname env subst)
                subst))
+    (def-transparent-type-exp
+      (v t)
+      (let ((vt (sym->type t
+                           (lambda (v)
+                             (deref (apply-env env v))))))
+        (TypeRet (Unit)
+                 (list v)
+                 (extend-env v
+                             (newref vt)
+                             env)
+                 subst)))
+    (def-opague-type-exp
+      (v)
+      (let ((tvar (gen-type-var)))
+        (TypeRet (Unit)
+                 (list v)
+                 (extend-env v (newref tvar) env)
+                 subst)))
     (call-exp
       (rator rands)
       (match (typeof/subst rator env subst)
         [(TypeRet rator-type _ _ subst)
-         (let ((exp-tvar (Var (typevar))))
+         (let ((exp-tvar (gen-type-var)))
            (TypeRet exp-tvar
                     '()
                     env
                     (match (typeof-multi/subst rands env subst)
                       [(list rand-types subst)
-                       ;(printf "~a ~a\n" rator-type rand-types)
                        (unify subst rator-type (Fun rand-types exp-tvar) exp)])))]))
     ))
 
@@ -403,34 +425,30 @@
                     (lambda (v)
                       v)))|#
   #|(test-typeof '(module m1
-                  (sig
-                    (u int)
-                    (f ((int) -> int)))
-                  (body
-                    (define u 3)
-                    (define f (lambda (v) v)))))|#
+                    (sig
+                      (deftype u int)
+                      (deftype f ((int) -> int)))
+                    (body
+                      (define u 3)
+                      (define f (lambda (v) v)))))|#
   #|(test-typeof '(module m1
                     (sig
                       (u int))
                     (body
                       (define u 3)
                       (define v 5))))|#
-  #|(test-typeof '(begin
+  (test-typeof '(begin
                     (module m1
                       (sig
-                        (u int)
-                        (m2 (mod
-                              (v f)
-                              (int ((int) -> int))
-                              ))
-                        (v int)
-                        )
+                        (deftype u int)
+                        (deftype m2 (mod (v f) (int ((int) -> int))))
+                        (deftype v int))
                       (body
                         (define u 3)
                         (module m2
                           (sig
-                            (f ((int) -> int))
-                            (v int))
+                            (deftype f ((int) -> int))
+                            (deftype v int))
                           (body
                             (define v 4)
                             (define f (lambda (v) (+ v 3)))
@@ -441,17 +459,36 @@
                     (import m1)
                     (import m1:m2)
                     m1:m2:v
-                    ))|#
+                    ))
   ;(test-typeof '(list 1 2 3))
   #|(test-typeof '(lambda (l)
-                  (cons 3 l)))|#
-  #|(test-typeof '(module m
-                  (sig
-                    (p (int . int))
-                    (p1 (int . bool))
-                    )
-                  (body
-                    (define p (cons 1 2))
-                    (define p1 (cons 1 #f))
-                    )))|#
+                    (cons 3 l)))|#
+  (test-typeof '(module m
+                    (sig
+                      (deftype p (int . int))
+                      (deftype p1 (int . bool)))
+                    (body
+                      (define p (cons 1 2))
+                      (define p1 (cons 1 #f))
+                      )))
+  (test-typeof '(begin
+                  (module m
+                    (sig
+                      (deftype t1 int) ; transparent
+                      (deftype t2 int) ; opague
+                      (deftype u t1)
+                      (deftype f ((t1) -> t1))
+                      (deftype g ((t2) -> t2))
+                      )
+                    (body
+                      (deftype t1 int)
+                      (deftype t2)
+                      (define u 3)
+                      (define f (lambda (v)
+                                  v))
+                      (define g (lambda (v)
+                                  v))))
+                  (import m)
+                  m:g
+                  ))
   )

@@ -38,3 +38,9 @@
              (list-ref refs pos)
              (apply-env inherited-env search-var))]))
       )))
+
+(define apply-envs
+  (lambda (env vars f)
+    (map (lambda (var)
+           (f (apply-env env var)))
+         vars)))

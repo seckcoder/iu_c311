@@ -42,11 +42,15 @@
     (val expression?))
   (module-exp
     (mname symbol?)
-    (vars (list-of symbol?))
-    (types (list-of Type?))
+    (sigs (list-of expression?))
     (bodies (list-of expression?)))
   (import-exp
     (mname symbol?))
+  (def-opague-type-exp
+    (v symbol?))
+  (def-transparent-type-exp
+    (v symbol?)
+    (t is-type?))
   )
 
 (define (parse-multi exps)
@@ -112,14 +116,17 @@
         '(void))
       ]
     [`(module ,mname
-        (sig (,vars1 ,types) ...)
+        (sig ,sigs ...)
         (body ,bodies ...))
       (module-exp mname
-                  vars1
-                  (map sym->type types)
+                  (map parse sigs)
                   (map parse bodies))]
     [`(import ,mod)
       (import-exp mod)]
+    [`(deftype ,v)
+      (def-opague-type-exp v)]
+    [`(deftype ,v ,t)
+      (def-transparent-type-exp v t)]
     ; procedure call
     [(list rand rators ...)
      (call-exp (parse rand)

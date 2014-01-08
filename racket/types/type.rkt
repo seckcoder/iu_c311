@@ -62,6 +62,8 @@
     (and (symbol? type)
          (char=? (string-ref (symbol->string type) 0)
                  #\t))))
+(define (gen-type-var)
+  (Var (typevar)))
 
 #|(define (typeof-simple v)
     (match v
@@ -127,29 +129,47 @@
      `(mod ,vars ,(map type->sym types))]
     ))
 
-(define sym->type
-  (match-lambda
+(define (sym->type t env)
+  (match t
     ['int (Num)]
     ['str (Str)]
     ['bool (Bool)]
     ['atom (Atom)]
     ['void (Unit)]
-    [(? typevar? v) (Var v)]
+    [(? symbol? v)
+     (env v)]
     [(list) (Nil)]
     [(list vts '-> t)
-     (Fun (map sym->type vts)
-          (sym->type t))]
+     (Fun (map (lambda (t)
+                 (sym->type t env))
+               vts)
+          (sym->type t env))]
     [`(mod ,vars ,types)
-      (Mod vars (map sym->type types))]
+      (Mod vars (map (lambda (t)
+                       (sym->type t env))
+                     types))]
     [(cons a d)
-     (Pair (sym->type a)
-           (sym->type d))]
+     (Pair (sym->type a env)
+           (sym->type d env))]
     ))
 
 ; whether the sexp is of the type format
 (define (is-type? s)
-  ; This is just a tmp impl
-  (Type? (sym->type s)))
+  (match-lambda
+    [(? simpletype?) #t]
+    [(? symbol?)
+     ; type declaration type var.
+     ; Note this is not `#(Var)`
+     #t]
+    [(list vts '-> t) #t] ; fun
+    [`(mod ,vars ,types) ;mod
+      (and ((list-of symbol?) vars)
+           (andmap is-type? types))]
+    [(cons a d) ; Pair
+     (and (is-type? a)
+          (is-type? d))]
+    [_ #f]
+    ))
 
 (define lst-of-t->pair
   (lambda (l)
