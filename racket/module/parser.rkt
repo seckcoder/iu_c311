@@ -1,5 +1,3 @@
-#lang racket
-
 (require eopl/datatype
          "../base/utils.rkt"
          "../cps/builtin.rkt"
@@ -46,9 +44,12 @@
     (bodies (list-of expression?)))
   (import-exp
     (mname symbol?))
-  (def-opague-type-exp
+  (opague-type-exp
     (v symbol?))
-  (def-transparent-type-exp
+  (transparent-type-exp
+    (v symbol?)
+    (t is-type?))
+  (sig-val-exp
     (v symbol?)
     (t is-type?))
   )
@@ -118,15 +119,19 @@
     [`(module ,mname
         (sig ,sigs ...)
         (body ,bodies ...))
+      ; we can restrict the sig and body definition so
+      ; that only type|val|define is alllowed in them
       (module-exp mname
                   (map parse sigs)
                   (map parse bodies))]
     [`(import ,mod)
       (import-exp mod)]
-    [`(deftype ,v)
-      (def-opague-type-exp v)]
-    [`(deftype ,v ,t)
-      (def-transparent-type-exp v t)]
+    [`(type ,v)
+      (opague-type-exp v)]
+    [`(val ,v ,t)
+      (sig-val-exp v t)]
+    [`(type ,v ,t)
+      (transparent-type-exp v t)]
     ; procedure call
     [(list rand rators ...)
      (call-exp (parse rand)

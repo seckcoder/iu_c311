@@ -364,7 +364,7 @@
                '()
                (import-mod mname env subst)
                subst))
-    (def-transparent-type-exp
+    (transparent-type-exp
       (v t)
       (let ((vt (sym->type t
                            (lambda (v)
@@ -465,29 +465,39 @@
                     (cons 3 l)))|#
   (test-typeof '(module m
                     (sig
-                      (deftype p (int . int))
-                      (deftype p1 (int . bool)))
+                      (type p (int . int))
+                      (type p1 (int . bool)))
                     (body
                       (define p (cons 1 2))
                       (define p1 (cons 1 #f))
                       )))
   (test-typeof '(begin
-                  (module m
+                  (module type mt
                     (sig
-                      (deftype t1 int) ; transparent
-                      (deftype t2 int) ; opague
-                      (deftype u t1)
-                      (deftype f ((t1) -> t1))
-                      (deftype g ((t2) -> t2))
-                      )
+                      (type t1 int) ; transparent
+                      (type t2) ; opague
+                      (val u int)
+                      (val v t2)
+                      (val f ((t1) -> t1))
+                      (val g ((t2) -> t2))
+                      ))
+                  (module m mt
                     (body
-                      (deftype t1 int)
-                      (deftype t2)
+                      (type t1 int)
+                      (type t2 bool)
                       (define u 3)
+                      (define v #f)
                       (define f (lambda (v)
                                   v))
                       (define g (lambda (v)
                                   v))))
+                  (module m1
+                    (sig
+                      (type t)
+                      (val u t))
+                    (body
+                      (type t str)
+                      (define u "hello")))
                   (import m)
                   m:g
                   ))

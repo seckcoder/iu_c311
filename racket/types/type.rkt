@@ -8,6 +8,14 @@
 
 ;types
 
+#|Type ::= num | str | bool | atom | nil | unit
+       | var v
+       | poly v * Type
+       | pair type * type
+       | (type -> type)
+       | (mod ...)|#
+
+
 (struct Type () #:transparent)
 (struct Num Type () #:transparent)
 (struct Str Type () #:transparent)
@@ -137,7 +145,7 @@
     ['atom (Atom)]
     ['void (Unit)]
     [(? symbol? v)
-     (env v)]
+     (sym->type (env v) env)]
     [(list) (Nil)]
     [(list vts '-> t)
      (Fun (map (lambda (t)

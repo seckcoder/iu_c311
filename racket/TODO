@@ -9,3 +9,5 @@ Implement erlang and go's concurrency model.
 6.34 (ANF Transformation)
 
 7.29 and 7.30 (Let Polymorphism. Don't know how to implement this in a neat way)
+
+Use parentheC to transform Scheme program to C
