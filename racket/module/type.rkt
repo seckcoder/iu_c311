@@ -64,53 +64,6 @@
     (DeclRet '() env)
     decls))
 
-(define typeof-t
-  (match t
-    [(or (? simpletype?)
-         (? Opaque?)
-         (? Var?))
-     t]
-    [(? T-Var?)
-     (Env.apply env t)]
-    [(Pair a d)
-     (Pair (typeof-t a env)
-           (typeof-t d env))]
-    [(Fun vts rt)
-     (Fun (map (lambda (v)
-                 (typeof-t v env))
-               vts)
-          (typeof-t rt env))]
-    [(Mod vs ts)
-     (let loop ((env env)
-                (vs-acc '())
-                (ts-acc '())
-                (vs vs)
-                (ts ts))
-       (cond ((and (null? vs)
-                   (null? ts))
-              (Mod vs-acc ts-acc))
-             ((or (null? vs)
-                  (null? ts))
-              (error 'typeof-t "bad type:~a" t))
-             (else
-               (let ((v (car vs))
-                     (t (car ts)))
-                 (match v
-                   [(? V-Var?)
-                    (loop env
-                          (append vs-acc (list v))
-                          (append ts-acc (list (typeof-t t env)))
-                          (cdr vs)
-                          (cdr ts)
-                          )]
-                   [(? T-Var?)
-                    (loop (Env.extend v t env)
-                          (append vs-acc (list v))
-                          (append ts-acc (list (typeof-t t env)))
-                          (cdr vs)
-                          (cdr ts))]
-                   [_ (error 'typeof-t "match module var:~a failed" v)])))))]
-    ))
 
 (define (typeof-defn defn env subst)
   (cases definition defn
@@ -317,16 +270,6 @@
 
 ; ============TEST====================
 
-(module+ test-
-  ; test typeof-t
-  (define (test-typeof-t t)
-    (initialize-store!)
-    (typeof-t (parse-t t) (Env.empty)))
-  (test-typeof-t '((int) -> int))
-  (test-typeof-t '(mod (type t)
-                       (type t1 int)
-                       (val f ((t1) -> t))))
-  )
 
 (module+ test-
   ; test typeof-exp

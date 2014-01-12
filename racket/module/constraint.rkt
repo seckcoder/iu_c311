@@ -131,8 +131,8 @@
            [(? Var?)
             (loop ty2 ty1)]
            [(? Mod?)
-            (error "unify module")])]
             ;(unify-mod subst ty1 ty2 exp)])]
+            (error "unify module")])]
         ))))
 
 ; TODO: ty1 = ty2
