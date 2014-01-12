@@ -27,6 +27,7 @@
          combine
          allf
          anyf
+         number->symbol
          )
 
 (define anything?
@@ -169,6 +170,10 @@
             (symbol->string sym)))
         ""
         syms))))
+
+(define number->symbol
+  (lambda (n)
+    (string->symbol (number->string n))))
 
 (define combine
   (match-lambda*

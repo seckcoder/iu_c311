@@ -6,10 +6,15 @@
   (provide apply
            extend
            extends*
+           extends**
+           empty
            (rename-out [CEnv create]
                        [CEnv? is-env?])
            )
-  (struct CEnv (v-env t-env))
+  (struct CEnv (v-env t-env) #:transparent)
+  (define (empty)
+    (CEnv (empty-env)
+          (empty-env)))
   (define (apply env v)
     (match v
       [(V-Var v)

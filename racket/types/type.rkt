@@ -14,9 +14,12 @@
        | pair type * type
        | (type -> type)
        | (mod ...)|#
-
-
 (struct Type () #:transparent)
+; T-Var is different from type-var
+(struct T-Var Type (v)
+        #:transparent)
+(struct V-Var (v)
+        #:transparent)
 (struct Num Type () #:transparent)
 (struct Str Type () #:transparent)
 (struct Bool Type () #:transparent)
@@ -40,17 +43,24 @@
                   (if (andmap Type? (cons rt vts))
                     (values vts rt)
                     (error type-name "bad type value:~a ~a" vts rt))))
-(struct Mod Type (vars types)
-        #:transparent
-        #:guard (lambda (vars types type-name)
-                  (if (and ((list-of symbol?) vars)
-                           ((list-of Type?) types)
-                           (= (length vars)
-                              (length types)))
-                    (values vars types)
-                    (error type-name "bad type value:~a ~a" vars types)))
-        ; TODO: modify the equal func of Module
-        )
+(struct Mod Type (vs ts)
+        #:transparent)
+(struct Opaque Type (t)
+        #:transparent)
+
+(define opaque-var
+  (let ((n -1))
+    (lambda (v)
+      (set! n (+ n 1))
+      (sym-append
+        v
+        '-
+        (number->symbol n)))))
+
+(define gen-opaque-type
+  (match-lambda*
+    [(list) (Opaque (opaque-var 't))]
+    [(list t) (Opaque (opaque-var t))]))
 
 ; TypeVar
 (struct Var Type (v)
@@ -59,6 +69,10 @@
                   (if (typevar? v)
                     v
                     (error tn "bad type value for Var:~a" v))))
+; Opague type.
+(struct Opague Type (t)
+        #:transparent)
+
 (define typevar
   (let ((n -1))
     (lambda ()
@@ -120,7 +134,7 @@
          Nil?) t))
 
 ; for type declaration
-(define type->sym
+#|(define type->sym
   (match-lambda
     [(Num) 'int]
     [(Str) 'str]
@@ -135,9 +149,10 @@
      `(,(map type->sym vts) -> ,(type->sym rt))]
     [(Mod vars types)
      `(mod ,vars ,(map type->sym types))]
-    ))
+    ))|#
 
-(define (sym->type t env)
+; type of symbole
+#|(define (typeof-t t env)
   (match t
     ['int (Num)]
     ['str (Str)]
@@ -145,24 +160,24 @@
     ['atom (Atom)]
     ['void (Unit)]
     [(? symbol? v)
-     (sym->type (env v) env)]
+     (typeof-t (env v) env)]
     [(list) (Nil)]
     [(list vts '-> t)
      (Fun (map (lambda (t)
-                 (sym->type t env))
+                 (typeof-t t env))
                vts)
-          (sym->type t env))]
+          (typeof-t t env))]
     [`(mod ,vars ,types)
       (Mod vars (map (lambda (t)
-                       (sym->type t env))
+                       (typeof-t t env))
                      types))]
     [(cons a d)
-     (Pair (sym->type a env)
-           (sym->type d env))]
-    ))
+     (Pair (typeof-t a env)
+           (typeof-t env))]
+    ))|#
 
 ; whether the sexp is of the type format
-(define (is-type? s)
+#|(define (is-type? s)
   (match-lambda
     [(? simpletype?) #t]
     [(? symbol?)
@@ -177,7 +192,7 @@
      (and (is-type? a)
           (is-type? d))]
     [_ #f]
-    ))
+    ))|#
 
 (define lst-of-t->pair
   (lambda (l)
@@ -185,24 +200,3 @@
           (else
             (Pair (car l)
                   (lst-of-t->pair (cdr l)))))))
-
-(module+ test
-  (define (test-type-sym t)
-    (check equal?
-           (type->sym (sym->type t))
-           t))
-  (test-type-sym '((int) -> int))
-  (test-type-sym '((int bool) -> int))
-  (test-type-sym '())
-  (test-type-sym '(mod (v f)
-                       (int ((int) -> int))))
-  (test-type-sym '(int int . int))
-  (test-type-sym '(int int))
-  (check equal?
-         (type->sym
-           (lst-of-t->pair (list (Num)
-                                 (Num)
-                                 (Bool)
-                                 (Str))))
-         '(int int bool str))
-  )
