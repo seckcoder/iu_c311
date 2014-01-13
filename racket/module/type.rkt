@@ -88,20 +88,22 @@
         [(DeclRet decl-vs decl-env)
          (match (typeof-defns defns env subst)
            [(DefnRet defn-vs defn-env subst)
-            (match
-              (type-check-mod
-                decl-vs (map (lambda (v)
-                               (Env.apply decl-env v))
-                             decl-vs)
-                defn-vs (map (lambda (v)
-                               (Env.apply defn-env v))
-                             defn-vs)
-                env subst exp)
-              [(list mod subst)
-               (let ((tv (V-Var mn)))
-                 (DefnRet tv
-                          (Env.extend tv mod env)
-                          subst))])])]))
+            (let* ((decl-ts (map (lambda (v)
+                                      (Env.apply decl-env v))
+                                    decl-vs))
+                   (defn-ts (map (lambda (v)
+                                      (Env.apply defn-env v))
+                                    defn-vs))
+                   (subst
+                     (type-check-mod
+                       decl-vs decl-ts
+                       defn-vs defn-ts
+                       env subst exp))
+                   (tv (V-Var mn))
+                   (mod (Mod decl-vs decl-ts)))
+              (DefnRet tv
+                       (Env.extend tv mod env)
+                       subst))])]))
     ))
 
 (define (typeof-decl decl env)
@@ -307,7 +309,7 @@
        (printf "~a\n~a\n" (unparse-t (Env.apply env v))
                subst)]))
   ;(test-typeof-defn '(define v 3))
-  (test-typeof-defn '(module m
+  #|(test-typeof-defn '(module m
                        (sig
                          (type t)
                          (type t1 int)
@@ -317,5 +319,6 @@
                          (type t int)
                          (type t1 int)
                          (define u 3)
-                         )))
+                         )))|#
+
   )

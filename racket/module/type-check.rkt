@@ -72,10 +72,9 @@
   (print-vts vs2 ts2)
   (let ((pairs (map list vs2 ts2)))
     (define (iter vs1 ts1
-                  env subst
-                  v-ts)
+                  env subst)
       (cond
-        ((null? vs1) (reverse v-ts))
+        ((null? vs1) subst)
         (else
           (let ((v1 (car vs1))
                 (t1 (typeof-t (car ts1) env #:expand? true)))
@@ -89,17 +88,14 @@
                           (? Opaque?))
                     ; Do you know why we have to generate
                     ; another opaque type here? ^_^
-                    (let ((opaque-t (gen-opaque-type)))
-                      (iter (cdr vs1) (cdr ts1)
-                            (Env.extend v1 opaque-t env)
-                            subst
-                            (cons (list v1 opaque-t) v-ts)
-                            ))]
+                    (iter (cdr vs1) (cdr ts1)
+                          (Env.extend v1 t1 env)
+                          subst
+                          )]
                    [(list (? Opaque?) _)
                     (iter (cdr vs1) (cdr ts1)
                           (Env.extend v1 t2 env)
                           subst
-                          (cons (list v1 (gen-opaque-type)) v-ts)
                           )]
                    [(list _ (? Opaque?))
                     (error 'type-check-mod "opaque vs transparent")]
@@ -108,17 +104,8 @@
                           env
                           ; TODO: some problem here
                           (unify subst t1 t2 exp)
-                          (cons (list v1 t1) v-ts)
                           )]))])))))
-    (let ((v-ts (iter vs1 ts1
-                      env
-                      subst
-                      '())))
-      (list 
-        (Mod (map car v-ts)
-             (map cadr v-ts))
-        subst
-        )))
+    (iter vs1 ts1 env subst))
    )
 
 (module+ test-

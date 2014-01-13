@@ -57,10 +57,13 @@
         '-
         (number->symbol n)))))
 
-(define gen-opaque-type
+#|(define gen-opaque-type
   (match-lambda*
     [(list) (Opaque (opaque-var 't))]
-    [(list t) (Opaque (opaque-var t))]))
+    [(list t) (Opaque (opaque-var t))]))|#
+
+(define (gen-opaque-type t)
+  (Opaque t))
 
 ; TypeVar
 (struct Var Type (v)
