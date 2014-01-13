@@ -38,6 +38,9 @@
     (cst const?))
   (var-exp
     (var symbol?))
+  (mod-var-exp
+    (mod symbol?)
+    (var symbol?))
   (quote-exp
     (sexp sexp?))
   (op-exp
@@ -214,10 +217,20 @@
                 (map parse-decl decls)
                 (map parse-defn defns))]))
 
+(define (sym->var-exp s)
+  (match (string-split (symbol->string s) ":")
+    [(list mod var)
+     (mod-var-exp (string->symbol mod)
+                  (string->symbol var))]
+    [(list var)
+     (var-exp (string->symbol var))]
+    [_ (error 'sym->var-exp "wrong var format:~a" s)]))
+
 (define (parse-exp sexp)
   (match sexp
     [(? const? x) (const-exp x)]
-    [(? symbol? x) (var-exp x)]
+    [(? symbol? x)
+     (sym->var-exp x)]
     ; symbol
     [`(quote ,x) (quote-exp x)]
     ; builtin ops
@@ -270,3 +283,20 @@
                       (parse-exp rator))
                     rators))]
     ))
+
+(module+ test
+  ; test parser
+  (define (test-parse-t t)
+    (check equal?
+           (unparse-t (parse-t t))
+           t))
+  (test-parse-t '((int) -> int))
+  (test-parse-t '(mod (type t)
+                      (type t1 int)
+                      (val f ((t1) -> t))))
+  )
+
+(module+ test
+  ; test parse-exp
+  (parse-exp 'm:t)
+  (parse-exp 't))

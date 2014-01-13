@@ -68,8 +68,8 @@
                         env
                         subst
                         exp)
-  (print-vts vs1 ts1)
-  (print-vts vs2 ts2)
+  #|(print-vts vs1 ts1)
+  (print-vts vs2 ts2)|#
   (let ((pairs (map list vs2 ts2)))
     (define (iter vs1 ts1
                   env subst)

@@ -144,6 +144,12 @@
       (TypeRet (Env.apply env (V-Var var))
                env
                subst))
+    (mod-var-exp
+      (mod var)
+      (let ((mod (Env.apply env (V-Var mod))))
+        (TypeRet (Mod-find-var mod var)
+                 env
+                 subst)))
     (quote-exp
       (sexp)
       (letrec ((typeof-sexp (lambda (sexp)
@@ -297,7 +303,7 @@
                    '((int) -> bool))
   )
 
-(module+ test
+(module+ test-
   ; compound test
   (define (test-typeof-defn defn)
     (initialize-store!)
@@ -309,7 +315,7 @@
        (printf "~a\n~a\n" (unparse-t (Env.apply env v))
                subst)]))
   ;(test-typeof-defn '(define v 3))
-  #|(test-typeof-defn '(module m
+  (test-typeof-defn '(module m
                        (sig
                          (type t)
                          (type t1 int)
@@ -317,8 +323,29 @@
                          )
                        (body
                          (type t int)
-                         (type t1 int)
+                         (type t1 t)
                          (define u 3)
-                         )))|#
+                         )))
+  )
 
+(module+ test
+  ; test typeof
+  (define (test-typeof defns exp)
+    (typeof defns exp))
+  #|(test-typeof (list '(define f
+                        (lambda (v) v))
+                     )
+               '(f 3))|#
+  (test-typeof (list '(module m
+                        (sig
+                          (type t)
+                          (type t1 int)
+                          (val u t)
+                          )
+                        (body
+                          (type t int)
+                          (type t1 t)
+                          (define u 3))
+                        ))
+               'm:u)
   )

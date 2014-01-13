@@ -115,6 +115,13 @@
   (match tm
     [(Mod vars types)
      (andmap no-var? types)]))
+(define (Mod-find-var mod var)
+  (let ((pairs (map list (Mod-vs mod) (Mod-ts mod))))
+    (match (assoc (T-Var var) pairs)
+      [#f (match (assoc (V-Var var) pairs)
+            [#f (error 'Mod-find-car "cann't find var:~a in module:~a" var mod)]
+            [(list v t) t])]
+      [(list v t) t]))) 
 
 ; whether the type contain tvar
 (define (no-var? t)

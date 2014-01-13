@@ -7,18 +7,6 @@
          (prefix-in Env. "type-env.rkt")
          "type.rkt")
 
-(module+ test
-  ; test parser
-  (define (test-parse-t t)
-    (check equal?
-           (unparse-t (parse-t t))
-           t))
-  (test-parse-t '((int) -> int))
-  (test-parse-t '(mod (type t)
-                      (type t1 int)
-                      (val f ((t1) -> t))))
-  )
-
 
 (module+ test
   (require rackunit)
