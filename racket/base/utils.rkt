@@ -27,6 +27,10 @@
          combine
          allf
          anyf
+         number->symbol
+         remove-nth
+         filteri
+         mapi
          )
 
 (define anything?
@@ -170,6 +174,10 @@
         ""
         syms))))
 
+(define number->symbol
+  (lambda (n)
+    (string->symbol (number->string n))))
+
 (define combine
   (match-lambda*
     [(list f) f]
@@ -192,6 +200,35 @@
      (lambda (v)
        (or (f0 v)
            ((apply anyf f*) v)))]))
+
+(define (filteri pred lst)
+  (let loop ((i 0)
+             (lst lst))
+    (cond
+      ((null? lst) '())
+      (else
+        (if (pred i (car lst))
+          (loop (add1 i)
+                (cdr lst))
+          (cons (car lst)
+                (loop (add1 i)
+                      (cdr lst))))))))
+
+(define (mapi proc lst)
+  (let loop ((i 0)
+             (lst lst))
+    (cond
+      ((null? lst) '())
+      (else
+        (cons (proc i (car lst))
+              (loop (add1 i)
+                    (cdr lst)))))))
+
+(define (remove-nth lst i)
+  (filteri
+    (lambda (j v)
+      (= i j))
+    lst))
 
 (module+ test
   (require rackunit)
