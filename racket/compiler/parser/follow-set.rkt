@@ -91,7 +91,7 @@
           follow-subst)))
     (let ((follow-table (from-prods prods (initial-follow-table))))
       (let ((graph (g:cyclic->acyclic (make-subset-graph))))
-        (g:pr-graph graph)
+        ;(g:pr-graph graph)
         (define (accumulate-follow-set bdl folo-set-acc follow-table)
           ; folo-set-acc = folo-set-acc U (follow-set of (w:wset))
           ; update the follow-set of v in follow-table
