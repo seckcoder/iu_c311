@@ -4,10 +4,12 @@
          "ds.rkt"
          "demos.rkt")
 
-(provide first-set)
+(provide first-table
+         first-set-of-e
+         first-set-of-es)
 
 ; full of side effect
-(define (first-set prods)
+(define (first-table prods)
   (define (get-prods unterm)
     (filter (lambda (prod)
               (eq? (Production-unterm prod)
@@ -47,8 +49,27 @@
   (from-prods prods (make-immutable-hasheq))
   )
 
+(define (first-set-of-e first-table e)
+  (if (terminal? e)
+    (set e)
+    (hash-ref first-table e (set))))
+
+; handle-end: A = B1B2B3, B1->sigma and B2->sigma and B3->sigma
+(define (first-set-of-es first-table es handle-end)
+  (let loop ((es es)
+             (fst-set (set)))
+    (cond
+      ((null? es)
+       (handle-end fst-set))
+      (else
+        (let ((e-fst-set (first-set-of-e first-table (car es))))
+          (if (set-member? e-fst-set 'sigma)
+            (loop (cdr es)
+                  (set-union fst-set e-fst-set))
+            (set-union fst-set e-fst-set)))))))
+
 (module+ test
   (require rackunit)
-  (first-set (map make-prod arithmetic-prods))
+  (first-table (map make-prod arithmetic-prods))
   ;(first-set (map make-prod simple-prods))
   )

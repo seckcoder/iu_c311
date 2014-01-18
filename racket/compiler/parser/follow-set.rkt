@@ -7,7 +7,9 @@
          (prefix-in g: "graph.rkt")
          )
 
-(define (follow-set prods first-table)
+(provide follow-table)
+
+(define (follow-table prods fst-table)
   (let ((follow-subst '()))
     (define (unify! v w)
       (set! follow-subst (cons (list v w)
@@ -46,7 +48,7 @@
               (list follow-table (set (car es)))]))
           (else
             (let* ((e0 (car es))
-                   (e0-fset (hash-ref first-table e0 (set))))
+                   (e0-fset (hash-ref fst-table e0 (set))))
               (cond ((set-member? e0-fset 'sigma)
                      (match
                        (iter-es (cdr es)
@@ -134,12 +136,12 @@
             (dfs1 root (g:vs graph)
                   (g:empty-visited) (set)
                   follow-table)))
-        (dfs)
+        (cadr (dfs))
         ))
     ))
 
 
 (define (test-case)
   (let* ((prods (map make-prod arithmetic-prods))
-         (first-table (first-set prods)))
-    (follow-set prods first-table)))
+         (fst-table (first-table prods)))
+    (follow-table prods fst-table)))

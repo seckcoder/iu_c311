@@ -25,3 +25,15 @@
             k
             (set-union (hash-ref hs k (set))
                        s)))
+
+(define (empty-table)
+  (make-immutable-hash))
+
+(struct tblkey2d (k1 k2)
+        #:transparent)
+
+(define (extend-table2d tbl k1 k2 v)
+  (hash-set tbl (tblkey2d k1 k2) v))
+
+(define (apply-table2d tbl k1 k2)
+  (hash-ref tbl (tblkey2d k1 k2)))
