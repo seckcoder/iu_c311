@@ -17,7 +17,6 @@
          mapn
          v->lst
          atom?
-         const?
          sexp?
          tail
          flatmap
@@ -31,6 +30,8 @@
          remove-nth
          filteri
          mapi
+         group
+         groupf
          )
 
 (define anything?
@@ -109,13 +110,6 @@
          (not (null? v)))))
 
 
-(define const?
-  (lambda (v)
-    (or (number? v)
-        (string? v)
-        (boolean? v))))
-
-
 (define sexp?
   (lambda (s)
     (or (atom? s)
@@ -133,7 +127,6 @@
            (car lst))
           (else
             (tail (cdr lst))))))
-
 (define mfindf
   (lambda (handle lst)
     (match (find handle lst)
@@ -159,6 +152,7 @@
             (safe-take (cdr lst)
                        (- n 1))))))
 
+
 (define (apply-base-ns op rands)
   (apply (eval op (make-base-namespace))
          rands))
@@ -178,12 +172,15 @@
   (lambda (n)
     (string->symbol (number->string n))))
 
+; deprecated!
+; use racket's compose instead
 (define combine
   (match-lambda*
     [(list f) f]
     [(list f f* ...)
      (lambda (v)
        ((apply combine f*) (f v)))]))
+
 
 (define allf
   (match-lambda*
@@ -230,8 +227,42 @@
       (= i j))
     lst))
 
+(define (group lst n)
+  (cond
+    ((null? lst) '())
+    (else
+      (cons (take lst n)
+            (group (drop lst n) n)))))
+(define groupf1
+  (lambda (lst pred-fns split-fns)
+    (cond
+      [(null? lst) '()]
+      [else
+        (let-values ([(v rest)
+                      (let loop ((pred-fns pred-fns)
+                                 (split-fns split-fns))
+                        (cond
+                          ((null? pred-fns)
+                           (error 'groupf "no function applied for list:~a" lst))
+                          (else
+                            (match* ((car pred-fns)
+                                     (car split-fns))
+                              [(pred-fn split-fn)
+                               (if (pred-fn lst)
+                                 (split-fn lst)
+                                 (loop (cdr pred-fns)
+                                       (cdr split-fns)))]))))])
+          (cons v (groupf1 rest pred-fns split-fns)))])))
+
+(define-syntax groupf
+  (syntax-rules()
+    [(_ lst (pred-fn0 split-fn0) (pred-fn* split-fn*) ...)
+     (groupf1 lst
+              `(,pred-fn0 ,pred-fn* ...)
+              `(,split-fn0 ,split-fn* ...))]))
+
 (module+ test
-  (require rackunit)
+  ; test without check
   ((combine (lambda (v) v)
             (lambda (v) v)
             (lambda (v) v))
@@ -245,4 +276,23 @@
   ((anyf (lambda (v) (= v 1))
          (lambda (v) (= v 2))
          (lambda (v) (= v 3))) 0)
+  )
+
+(module+ test
+  (require rackunit)
+  (check-equal? (group '(1 2 3 4) 2)
+                '((1 2)
+                  (3 4)))
+
+  (check-equal?
+    (groupf
+      '(1 2 3 4 5 6 7 8 9)
+      [(compose odd? car)
+       (lambda (lst)
+         (split-at lst 1))]
+      [(compose even? car)
+       (lambda (lst)
+         (split-at lst 3))]
+      )
+    '((1) (2 3 4) (5) (6 7 8) (9)))
   )

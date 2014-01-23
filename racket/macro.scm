@@ -1,5 +1,6 @@
-(print-gensym #f)
-(print-gensym 'pretty/suffix)
+#lang racket
+#|(print-gensym #f)
+(print-gensym 'pretty/suffix)|#
 
 (define-syntax let1
   (syntax-rules ()
@@ -104,5 +105,15 @@
   (lambda ()
     (check eq? x 'x)))|#
 
+
+; transform a ... to list
+(define-syntax foo
+  (syntax-rules ()
+    [(_ (a b) ...)
+     (list
+       (list a ...)
+       (list b ...))]))
+
+(foo (1 2))
 
 ; syntax-case...
