@@ -7,23 +7,33 @@
       (string? x)
       (boolean? x)))
 
+; expressions
+; program
 (struct Program (main clses) #:transparent)
+
+; declaration
 (struct Cls (name base decls) #:transparent)
 (struct Def (v t val) #:transparent)
 (struct DefStatic (v t val) #:transparent)
+
+; expressions
 (struct Fun (v body) #:transparent)
 (struct Vec (vs) #:transparent)
 (struct VecRef (v i) #:transparent)
-(struct VecSet (v i val) #:transparent)
-(struct Block (clauses)  #:transparent)
 (struct New (c vs) #:transparent)
 (struct Const (v) #:transparent)
 (struct Var (v) #:transparent)
-(struct If-s (test then else) #:transparent)
-(struct Set-s (v val) #:transparent)
-(struct Return (val) #:transparent)
 (struct Biop (op a b) #:transparent)
 (struct Unop (op v) #:transparent)
+
+; statements
+(struct VecSet (v i val) #:transparent)
+(struct Block (clauses)  #:transparent)
+(struct If-s (test then else) #:transparent)
+(struct Set-s (v val) #:transparent)
+; Should return be an expression of statement?
+(struct Return (val) #:transparent)
+; Should App be an expression or statement?
 (struct App (rator rands) #:transparent)
 
 (struct Type () #:transparent)
@@ -50,7 +60,6 @@
         (parse-t t1)
         (parse-t t2))]))
 
-
 (define parse-decl
   (match-lambda
     [(list `(: ,t)
@@ -76,13 +85,13 @@
       (parse-cls `(class (,name Object) ,@decls))]))
 
 ; statement
-(define parse-stms
+(define parse-stm
   (match-lambda
     ; if statement
     [`(if ,test ,then ,else)
       (If-s (parse-exp test)
-            (parse-stms then)
-            (parse-stms else))]
+            (parse-stm then)
+            (parse-stm else))]
     ; set statement
     [`(set! ,v ,val)
       (Set-s v (parse-exp val))]
@@ -146,8 +155,8 @@
   (match-lambda
     [(? is-decl? decl)
      (parse-decl decl)]
-    [stms
-     (parse-stms stms)]
+    [stm
+     (parse-stm stm)]
     ))
 
 ; fn body
@@ -160,7 +169,7 @@
                (drop clauses 2)))]
     [(compose not is-decl? car)
      (lambda (clauses)
-       (values (parse-stms (car clauses))
+       (values (parse-stm (car clauses))
                (cdr clauses)))]
     ))
 
@@ -187,8 +196,8 @@
                    (: int)
                    (def num_aux)
                    (if (< num 1)
-                     (set num_aux 1)
-                     (set num_aux
+                     (set! num_aux 1)
+                     (set! num_aux
                           (* num
                              (.ComputeFac this (- num 1)))))
                    (return num_aux))))
@@ -200,7 +209,7 @@
                             (printf
                               (.ComputerFac (new Fac) 10)))
                           ))))
-  (parse-stms '(begin
+  (parse-stm '(begin
                  (: int)
                  (def v 3)
                  (set! v 4)))
