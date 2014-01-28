@@ -33,6 +33,7 @@
 
 (require 'Type)
 
+
 (define (parse-ty t)
   (match t
     ['int (t:Int)]
@@ -53,6 +54,7 @@
     [`((,id* ,type-id*) ...)
       (t:Record (map list id* type-id*))]
     ))
+
 
 (module Decl racket
   (provide (prefix-out d: (all-defined-out)))

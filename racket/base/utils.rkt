@@ -32,6 +32,14 @@
          mapi
          group
          groupf
+         Some
+         Some?
+         None
+         None?
+         ref
+         ref?
+         set-ref-v!
+         ref-v
          )
 
 (define anything?
@@ -260,6 +268,11 @@
      (groupf1 lst
               `(,pred-fn0 ,pred-fn* ...)
               `(,split-fn0 ,split-fn* ...))]))
+
+; ML style struct
+(struct Some (v) #:transparent)
+(struct None () #:transparent)
+(struct ref (v) #:mutable #:transparent)
 
 (module+ test
   ; test without check
