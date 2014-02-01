@@ -58,7 +58,7 @@
   (struct tydec (id t) #:transparent)
   (struct vardec (id t v) #:transparent)
   ; f is e:fun
-  (struct fundec (id ft fv) #:transparent)
+  (struct fundec (id f) #:transparent)
   )
       
 (require 'Decl)
@@ -73,16 +73,19 @@
       (d:vardec v
                 (parse-ty type-id)
                 (parse-exp val))]
-    [`(defn (,f ((,v* ,type-id*) ...) : ,ret-type-id ,body ...))
+    [`(defn (,f ((,v* ,type-id*) ...) ,ret-type-id)
+            ,body ...)
       (d:fundec f
-                (parse-ty
-                  `(,type-id* -> ,ret-type-id))
-                (e:fun v*
-                       (parse-body body)))]
+                (e:fun
+                  (parse-ty
+                    `(,type-id* -> ,ret-type-id))
+                  (e:fv v*
+                        (parse-body body))))]
     ))
 
 (module+ test
-  (parse-decl '(defn (f ([v int]) : int v)))
+  (parse-decl '(defn (f ([v int]) int)
+                     v))
   )
 
 (define (parse-binding binding)
@@ -101,13 +104,15 @@
   (struct unop (op v) #:transparent)
   (struct vec (t vs) #:transparent)
   (struct vecref (v i) #:transparent)
-  (struct fun (vs body) #:transparent)
+  ; used for function value only.
+  (struct fun (ft fv) #:transparent)
+  (struct fv (vs body) #:transparent)
   (struct seq (exps) #:transparent)
   (struct set (v val) #:transparent)
   (struct vecset (v i val) #:transparent)
   (struct ife (test then else) #:transparent)
   (struct lete (decls body) #:transparent)
-  (struct app (rator rand) #:transparent)
+  (struct app (rator rands) #:transparent)
   )
 
 (require 'Exp)
@@ -165,9 +170,9 @@
     [`(let (,bindings ...) ,body ...)
       (e:lete (map parse-binding bindings)
               (parse-body body))]
-    [`(,rator ,rand)
+    [`(,rator ,rands ...)
       (e:app (parse-exp rator)
-             (parse-exp rand))]
+             (map parse-exp rands))]
     ))
 
 (struct Program (decls exp) #:transparent)
@@ -177,8 +182,8 @@
 
 (module+ test
   (parse (list
-           '(defn (f ([v int]) : (vec int)
-                  (vec int v))))
+           '(defn (f ([v int]) (vec int))
+                  (vec int v)))
          '(f v))
   (parse '() '(vec int v))
   )

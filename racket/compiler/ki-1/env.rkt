@@ -13,7 +13,7 @@
   (define (exts h ks vs)
     (foldl
       (lambda (k v h)
-        (ext k h v))
+        (ext h k v))
       h
       ks
       vs))

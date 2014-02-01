@@ -113,17 +113,14 @@
        (match (tr! v)
          [(t:Vec vt)
           vt])]
-      [(e:fun (t:Ft rnd rt) (e:fv v body))
-       (match v
-         [(Some x)
-          ((e:trans! tenv
-                     (h:ext venv x rnd))
-           body)]
-         [(None)
-          (tr! body)])
-       (t:Ft rnd rt)]
       [(e:seq exps)
        (tr-seq! exps)]
+      [(e:fun (t:Ft rnds rt) (e:fv vs body))
+       (let ((venv (h:exts venv vs rnds)))
+         ((e:trans! tenv venv) body))
+       (match exp
+         [(e:fun ft fv)
+          ft])]
       [(e:set v val)
        (check-type!
          exp
@@ -155,14 +152,22 @@
          [(list tenv venv)
           ((e:trans! tenv venv)
            body)])]
-      [(e:app rator rand)
-       (match* ((tr! rator) (tr! rand))
-         [((t:Ft rnd rt) rand-t)
-          (check-type! exp tenv rnd rand-t)
+      [(e:app rator rands)
+       (match (map tr! (cons rator rands))
+         [(list (t:Ft rnds rt) rands-t ...)
+          (for-each
+            (lambda (rnd-t1 rnd-t2)
+              (check-type! exp
+                           tenv
+                           rnd-t1
+                           rnd-t2))
+            rnds
+            rands-t)
           rt]
-         [(_ _) (error 'e:trans! "~a is not a function" rator)]
-         )]))
-  tr!)
+         [(list x ...)
+          (error 'e:trans! "~a is not a function" rator)])]
+      [_ (error 'e:trans! "not matched")]))
+    tr!)
 
 (module+ test-
   (define (test-trans-exp exp)
@@ -170,15 +175,10 @@
                (initial-venv))
      (parse-exp exp)))
   (test-trans-exp '(+ 1 2))
-  (test-trans-exp '(fn ([x : int]) : (vec int)
-                     (set! x 3)
-                     (vec int x)))
-  (test-trans-exp '(let ([x : int 3]
-                         [f (fn ([x : int]) : int
-                              x)])
+  (test-trans-exp '(let ([x : int 3])
                      (if (= x 3)
-                       (f x)
-                       (f x))))
+                       x
+                       x)))
   )
 
 (define (d:trans! tenv venv decl)
@@ -192,8 +192,8 @@
                   ((e:trans! tenv venv) v))
      (list tenv
            (h:ext venv id t))]
-    [(d:fundec id (e:fun t v))
-     (let ((venv (h:ext venv id t)))
+    [(d:fundec id (e:fun ft fv))
+     (let ((venv (h:ext venv id ft)))
        (match decl
          [(d:fundec id f)
           ((e:trans! tenv venv) f)])
@@ -237,11 +237,15 @@
   (define (test-prog decls exp)
     (trans! (parse decls exp)))
   (test-prog (list
+               '(defn (f ([x int]) int)
+                      x))
+             '(f 3))
+  #|(test-prog (list
                '(type t int)
-               '(def fact (fn ([x : t]) : t
-                            (if (= x 0)
-                              1
-                              (* (fact (- x 1))
-                                 x)))))
-             '(fact 3))
+               '(defn (fact ([x t]) t)
+                      (if (= x 0)
+                        1
+                        (* (fact (- x 1))
+                           x))))
+             '(fact 3))|#
   )
