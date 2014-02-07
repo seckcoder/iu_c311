@@ -36,13 +36,13 @@
 (define (immediate-rep x)
   (cond
     [(fixnum? x)
-     (ash x fxshift)]
+     (arithmetic-shift x fxshift)]
     [(boolean? x)
      (if (eq? x #t)
        bool_t
        bool_f)]
     [(char? x)
-     (+ (ash (char->integer x) 8)
+     (+ (arithmetic-shift (char->integer x) 8)
         chartag)]
     [(and (list? x)
           (null? x))
@@ -50,7 +50,5 @@
     ))
 
 (define (emit-program x)
-  (unless (immediate? x)
-    (error ---))
   (emit "   movl $~s, %eax" (immediate-rep x))
   )

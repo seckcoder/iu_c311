@@ -15,13 +15,12 @@
     (close-output-port p)))
 
 (define (build)
-  (unless (zero? (system "gcc -o stst startup.c stst.s"))
+  (unless (system "gcc -o stst startup.c stst.s")
     (error 'make "could not build target")))
 
 (define (execute)
-  (unless (zero? (system "./stst > stst.out"))
+  (unless (system "./stst > stst.out")
     (error 'make "produced program exited abnormally")))
-
 
 (define (build-program expr)
    (run-compile expr)
@@ -51,7 +50,7 @@
         [type (cadr test)]
         [out  (caddr test)])
     (printf "test ~s:~s ..." test-id expr)
-    (flush-output-port)
+    ;(flush-output-port)
     (case type
      [(string) (test-with-string-output test-id expr out)]
      [else (error 'test "invalid test type ~s" type)])
@@ -100,14 +99,14 @@
 (define show-compiler-output (make-parameter #f))
 
 (define (run-compile expr)
-  (let ([p (open-output-file "stst.s" 'replace)])
+  (let ([p (open-output-file "stst.s" #:exists 'replace)])
     (parameterize ([compile-port p])
        (compile-program expr))
     (close-output-port p)))
 
 
 (define (execute)
-  (unless (fxzero? (system "./stst > stst.out"))
+  (unless (system "./stst > stst.out")
     (error 'execute "produced program exited abnormally")))
 
 (define (get-string)
