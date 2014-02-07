@@ -171,7 +171,7 @@
       (e:lete (map parse-binding bindings)
               (parse-body body))]
     [`(,rator ,rands ...)
-      (e:app (parse-exp rator)
+      (e:app rator
              (map parse-exp rands))]
     ))
 

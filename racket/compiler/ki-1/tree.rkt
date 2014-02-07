@@ -18,11 +18,8 @@
 
   ; stm
   
-  ; move eval(e) to temporary t
-  (struct move-t (t e) #:transparent)
-
-  ; move eval(e) to memory at address: eval(addr)
-  (struct move-m (addr e) #:transparent)
+  ; move eval(e) to t(temporary | memory address)
+  (struct move (t e) #:transparent)
 
   ; eval(e), discard result
   (struct exp (e) #:transparent) 

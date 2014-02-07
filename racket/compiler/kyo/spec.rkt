@@ -57,8 +57,8 @@ sequence -> (seq
 
 If -> (if exp exp exp)
 
-let -> (let ([v : type-id exp]
-             [v fun])
+; We can't declare local functions(We use stack machine...)
+let -> (let ([v : type-id exp])
          exp)
 
 

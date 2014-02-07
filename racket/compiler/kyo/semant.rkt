@@ -208,7 +208,7 @@
     (list tenv venv)
     decls))
 
-(module+ test
+(module+ test-
   (define (test-trans-decl . decls)
     (d:trans*! (initial-tenv)
                (initial-venv)
@@ -227,8 +227,21 @@
 (define (trans! prog)
   (match prog
     [(Program decls exp)
-     (match (d:trans*! decls
-                       (initial-tenv)
-                       (initial-venv))
+     (match (d:trans*! (initial-tenv)
+                       (initial-venv)
+                       decls)
        [(list tenv venv)
         ((e:trans! tenv venv) exp)])]))
+
+(module+ test
+  (define (test-prog decls exp)
+    (trans! (parse decls exp)))
+  (test-prog (list
+               '(type t int)
+               '(def fact (fn ([x : t]) : t
+                            (if (= x 0)
+                              1
+                              (* (fact (- x 1))
+                                 x)))))
+             '(fact 3))
+  )

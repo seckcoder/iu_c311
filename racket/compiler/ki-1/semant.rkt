@@ -213,9 +213,6 @@
     (d:trans*! (initial-tenv)
                (initial-venv)
                (map parse-decl decls)))
-  #|(test-trans-decl '(type t int)
-                   '(type t1 t)
-                   '(def v : t1 3))|#
   (test-trans-decl '(type t int)
                    '(def f (fn ([x : t]) : t
                              (if (= x 0)
@@ -240,12 +237,12 @@
                '(defn (f ([x int]) int)
                       x))
              '(f 3))
-  #|(test-prog (list
+  (test-prog (list
                '(type t int)
                '(defn (fact ([x t]) t)
                       (if (= x 0)
                         1
                         (* (fact (- x 1))
                            x))))
-             '(fact 3))|#
+             '(fact 3))
   )
