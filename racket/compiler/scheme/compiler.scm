@@ -77,9 +77,13 @@
     [`(add1 ,v)
       (emit-exp v)
       (emit "   addl $~s, %eax" (immediate-rep 1))]
+    [`($fxadd1 ,v)
+      (emit-exp `(add1 ,v))]
     [`(sub1 ,v)
       (emit-exp v)
       (emit "   subl $~s, %eax" (immediate-rep 1))]
+    [`($fxsub1 ,v)
+      (emit-exp `(sub1 ,v))]
     [`(number->char ,v)
       (emit-exp v)
       ; shift left
@@ -121,7 +125,26 @@
       (emit-exp v)
       (emit "   cmpl $~s, %eax" (immediate-rep 0))
       (emit-eax-to-bool)]
+    [`(if ,test ,then ,else)
+      (emit-exp test)
+      (let ((else-lbl (gen-label))
+            (endif-lbl (gen-label)))
+        ; jump to else if equal to false
+        (emit "   cmpl $~s, %eax" bool-f)
+        (emit "   je ~s" else-lbl)
+        (emit-exp then)
+        (emit "   jmp ~s" endif-lbl)
+        (emit "~s:" else-lbl)
+        (emit-exp else)
+        (emit "~s:" endif-lbl))]
     ))
+
+(define gen-label
+  (let ([count 0])
+    (lambda ()
+      (let ([L (format "L_~s" count)])
+        (set! count (add1 count))
+        L))))
 
 (define (emit-eax-to-bool)
   (emit "   sete %al") ; set byte to 1 if equal
@@ -129,4 +152,5 @@
   (emit "   sal $~s, %al" boolshift)  ; transform the result to bool
   (emit "   or $~s, %al" bool-f))
 
-(load "tests-1.3-req1.scm")
+; (load "tests-1.3-req1.scm")
+(load "tests-1.4-req.scm")
