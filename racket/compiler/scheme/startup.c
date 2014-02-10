@@ -9,7 +9,7 @@
 #define wordsize 4
 #define fx_tag 0x00
 #define char_tag 0x0F
-#define charmask 0x0F
+#define charmask 0xFF
 #define charshift 8
 
 typedef unsigned int ptr;
@@ -62,6 +62,12 @@ void print_ptr(ptr x) {
   }
   printf("\n");
 }
+
+
+static char* allocate_protected_space(int size) {
+  int page = getpagesize();
+  int status;
+  int align
 
 int scheme_entry();
 int main(int argc, char** argv){
