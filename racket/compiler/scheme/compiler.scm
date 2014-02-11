@@ -148,9 +148,33 @@
                  ]
                [`(fx+ ,a ,b)
                  (emit-exp1 `(+ ,a ,b))]
+               [`(- ,a ,b)
+                 (emit-exp1 a)
+                 (emit "  movl %eax, ~s(%esp)" si)
+                 ((emit-exp (- si wordsize)) b)
+                 (emit "  subl %eax, ~s(%esp)" si)
+                 (emit "  movl ~s(%esp), %eax" si)]
+               [`(fx- ,a ,b)
+                 (emit-exp1 `(- ,a ,b))]
+               [`(* ,a ,b)
+                 (emit-exp1 a)
+                 (emit-remove-fxtag)
+                 (emit "  movl %eax, ~s(%esp)" si)
+                 ((emit-exp (- si wordsize)) b)
+                 (emit-remove-fxtag)
+                 (emit "  imull ~s(%esp), %eax" si)
+                 (emit-add-fxtag)]
+               [`(fx* ,a ,b)
+                 (emit-exp1 `(* ,a ,b))]
                )))
     emit-exp1))
 
+(define (emit-remove-fxtag)
+  (emit "   sar $~s, %eax" fxshift))
+
+(define (emit-add-fxtag)
+  (emit "   sal $~s, %eax" fxshift))
+ 
 (define gen-label
   (let ([count 0])
     (lambda ()
