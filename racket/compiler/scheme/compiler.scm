@@ -66,107 +66,162 @@
   (emit "   ret"))
 
 (require racket/match)
+
+(define (unop? op)
+  (memq op '(add1 $fxadd1 sub1 $fxsub1
+                  number->char char->number fixnum?
+                  number? char? null? boolean? not
+                  zero?)))
+
+(define (biop? op)
+  (memq op '(+ fx+
+               - fx-
+               * fx*
+               = fx=
+               < fx<
+               <= fx<=
+               > fx>
+               >= fx>=)))
+
 (define emit-exp
   (lambda (si)
+    (define (emit-unop op v)
+      (emit-exp1 v)
+      (match op
+        ['add1 (emit "   addl $~s, %eax" (immediate-rep 1))]
+        ['$fxadd1 (emit-exp1 `(add1 ,v))]
+        ['sub1 (emit "   subl $~s, %eax" (immediate-rep 1))]
+        ['$fxsub1 (emit-exp1 `(sub1 ,v))]
+        ['number->char
+         ; shift left
+         (emit "   shll $~s, %eax" (- charshift fxshift))
+         ; change the shifted to char tag
+         (emit "   orl $~s, %eax" chartag)]
+        ['char->number
+         (emit "   sarl $~s, %eax" (- charshift fxshift))]
+        ['fixnum?
+         (emit-exp1 `(number? ,v))]
+        ['number?
+         (emit "   andb $~s, %al" fxmask)
+         (emit "   cmpb $~s, %al" fxtag)
+         (emit "   sete %al")
+         (emit-eax-0/1->bool)]
+        ['null?
+         (emit "   cmpw $~s, %ax" null_v)
+         (emit "   sete %al")
+         (emit-eax-0/1->bool)]
+        ['boolean?
+         (emit "   andb $~s, %al" boolmask)
+         (emit "   cmpb $~s, %al" booltag)
+         (emit "   sete %al")
+         (emit-eax-0/1->bool)]
+        ['char?
+         (emit "   andb $~s, %al" charmask)
+         (emit "   cmpb $~s, %al" chartag)
+         (emit "   sete %al")
+         (emit-eax-0/1->bool)]
+        ['not
+         (emit "   cmpw $~s, %ax" bool-f)
+         ; if equal=#f, we set al to 1, then we transform it to #t.
+         ; if equal to other value, we set al to 0, then transformed to #f.
+         (emit "   sete %al")
+         (emit-eax-0/1->bool)]
+        ['zero?
+         (emit "   cmpl $~s, %eax" (immediate-rep 0))
+         (emit "   sete %al")
+         (emit-eax-0/1->bool)]
+        [_ (error 'emit-unop "~a is not an unary operator" op)]))
+    (define (emit-biop op a b)
+      (define (emit-*)
+        (emit-exp1 a)
+        (emit-remove-fxtag) ; remove fxtag so that it can be used in imull
+        (emit "  movl %eax, ~s(%esp)" si)
+        ((emit-exp (- si wordsize)) b)
+        (emit-remove-fxtag)
+        (emit "  imull ~s(%esp), %eax" si) ; multiply two number
+        (emit-add-fxtag))
+      (define (emit-biv)
+        (emit-exp1 a)
+        (emit "   movl %eax, ~s(%esp)" si); store a to stack
+        ((emit-exp (- si wordsize)) b))
+      (define-syntax gen-pairs
+        (syntax-rules ()
+          [(_)
+           (list)]
+          [(_ (op0 p* ...) pair* ...)
+           (cons
+             (cons `op0 (lambda ()
+                          p* ...))
+             (gen-pairs pair* ...))]))
+      (define-syntax biop-emit-pairs
+        (syntax-rules ()
+          [(_ p0 p* ...)
+           (make-hasheq
+             (gen-pairs p0 p* ...))]))
+      (define (emit-cmp op)
+        (emit-biv)
+        (emit "  cmpl ~s(%esp), %eax" si)
+        (case op
+          ['= (emit "   sete %al")]
+          ['< (emit "   setg %al")]
+          ['<= (emit "  setge %al")]
+          ['> (emit "   setl %al")]
+          ['>= (emit "  setle %al")]
+          [else (report-not-found)])
+        (emit-eax-0/1->bool))
+      (define op->emitter
+        (biop-emit-pairs
+          [* (emit-*)]
+          [fx* (emit-exp1 `(* ,a ,b))]
+          [+ (emit-biv)
+             ; b = a + b
+             (emit "   addl ~s(%esp), %eax" si)]
+          [fx+ (emit-exp1 `(+ ,a ,b))]
+          [- (emit-biv) 
+             ; b = a + b
+             (emit "   addl ~s(%esp), %eax" si)]
+          [fx- (emit-exp1 `(- ,a ,b))]
+          [= (emit-cmp =)]
+          [fx= (emit-exp1 `(= ,a ,b))]
+          [< (emit-cmp '<)]
+          [fx< (emit-exp `(< ,a ,b))]
+          [<= (emit-cmp '<=)]
+          [fx<= (emit-exp1 `(<= ,a ,b))]
+          [> (emit-cmp '>)]
+          [fx> (emit-exp1 `(> ,a ,b))]
+          [>= (emit-cmp '>=)]
+          [fx>= (emit-exp1 '(>= ,a ,b))]
+          ))
+      (define (report-not-found)
+        (lambda ()
+          (error 'emit-biop "~s is not a binary operator" op)))
+      (hash-ref op->emitter op report-not-found))
     (define emit-exp1
       (lambda (exp)
         (match exp
-               [(or (? number? x)
-                    (? boolean? x)
-                    (? char? x)
-                    (? null? x))
-                (emit "   movl $~s, %eax" (immediate-rep x))]
-               [`(add1 ,v)
-                 (emit-exp1 v)
-                 (emit "   addl $~s, %eax" (immediate-rep 1))]
-               [`($fxadd1 ,v)
-                 (emit-exp1 `(add1 ,v))]
-               [`(sub1 ,v)
-                 (emit-exp1 v)
-                 (emit "   subl $~s, %eax" (immediate-rep 1))]
-               [`($fxsub1 ,v)
-                 (emit-exp1 `(sub1 ,v))]
-               [`(number->char ,v)
-                 (emit-exp1 v)
-                 ; shift left
-                 (emit "   shll $~s, %eax" (- charshift fxshift))
-                 ; change the shifted to char tag
-                 (emit "   orl $~s, %eax" chartag)]
-               [`(char->number ,v)
-                 (emit-exp1 v)
-                 ; just shift right
-                 (emit "   sarl $~s, %eax" (- charshift fxshift))]
-               [`(fixnum? ,v)
-                 (emit-exp1 `(number? ,v))]
-               [`(number? ,v)
-                 (emit-exp1 v)
-                 (emit "   andb $~s, %al" fxmask)
-                 (emit "   cmpb $~s, %al" fxtag)
-                 (emit-eax-to-bool)]
-               [`(null? ,v)
-                 (emit-exp1 v)
-                 (emit "   cmpw $~s, %ax" null_v)
-                 (emit-eax-to-bool)]
-               [`(boolean? ,v)
-                 (emit-exp1 v)
-                 (emit "   andb $~s, %al" boolmask)
-                 (emit "   cmpb $~s, %al" booltag)
-                 (emit-eax-to-bool)]
-               [`(char? ,v)
-                 (emit-exp1 v)
-                 (emit "   andb $~s, %al" charmask)
-                 (emit "   cmpb $~s, %al" chartag)
-                 (emit-eax-to-bool)]
-               [`(not ,v)
-                 (emit-exp1 v)
-                 (emit "   cmpw $~s, %ax" bool-f)
-                 ; if equal=#f, we set al to 1, then we transform it to #t.
-                 ; if equal to other value, we set al to 0, then transformed to #f.
-                 (emit-eax-to-bool)]
-               [`(zero? ,v)
-                 (emit-exp1 v)
-                 (emit "   cmpl $~s, %eax" (immediate-rep 0))
-                 (emit-eax-to-bool)]
-               [`(if ,test ,then ,else)
-                 (emit-exp1 test)
-                 (let ((else-lbl (gen-label))
-                       (endif-lbl (gen-label)))
-                   ; jump to else if equal to false
-                   ; Que: how to optimize this?
-                   (emit "   cmpl $~s, %eax" bool-f)
-                   (emit "   je ~a" else-lbl)
-                   (emit-exp1 then)
-                   (emit "   jmp ~s" endif-lbl)
-                   (emit "~s:" else-lbl)
-                   (emit-exp1 else)
-                   (emit "~s:" endif-lbl))]
-               [`(+ ,a ,b)
-                 (emit-exp1 a)
-                 (emit "   movl %eax, ~s(%esp)" si); store a to stack
-                 ((emit-exp (- si wordsize)) b)
-                 (emit "   addl ~s(%esp), %eax" si) ; b = a + b
-                 ]
-               [`(fx+ ,a ,b)
-                 (emit-exp1 `(+ ,a ,b))]
-               [`(- ,a ,b)
-                 (emit-exp1 a)
-                 (emit "  movl %eax, ~s(%esp)" si)
-                 ((emit-exp (- si wordsize)) b)
-                 (emit "  subl %eax, ~s(%esp)" si)
-                 (emit "  movl ~s(%esp), %eax" si)]
-               [`(fx- ,a ,b)
-                 (emit-exp1 `(- ,a ,b))]
-               [`(* ,a ,b)
-                 (emit-exp1 a)
-                 (emit-remove-fxtag)
-                 (emit "  movl %eax, ~s(%esp)" si)
-                 ((emit-exp (- si wordsize)) b)
-                 (emit-remove-fxtag)
-                 (emit "  imull ~s(%esp), %eax" si)
-                 (emit-add-fxtag)]
-               [`(fx* ,a ,b)
-                 (emit-exp1 `(* ,a ,b))]
-               )))
+          [(or (? number? x)
+               (? boolean? x)
+               (? char? x)
+               (? null? x))
+           (emit "   movl $~s, %eax" (immediate-rep x))]
+          [(list (? unop? op) v)
+           (emit-unop op)]
+          [(list (? biop? op) a b)
+           (emit-biop op a b)]
+          [`(if ,test ,then ,else)
+            (emit-exp1 test)
+            (let ((else-lbl (gen-label))
+                  (endif-lbl (gen-label)))
+              ; jump to else if equal to false
+              ; Que: how to optimize this?
+              (emit "   cmpl $~s, %eax" bool-f)
+              (emit "   je ~a" else-lbl)
+              (emit-exp1 then)
+              (emit "   jmp ~s" endif-lbl)
+              (emit "~s:" else-lbl)
+              (emit-exp1 else)
+              (emit "~s:" endif-lbl))]
+          )))
     emit-exp1))
 
 (define (emit-remove-fxtag)
@@ -174,7 +229,7 @@
 
 (define (emit-add-fxtag)
   (emit "   sal $~s, %eax" fxshift))
- 
+
 (define gen-label
   (let ([count 0])
     (lambda ()
@@ -182,8 +237,9 @@
         (set! count (add1 count))
         (string->symbol L)))))
 
-(define (emit-eax-to-bool)
-  (emit "   sete %al") ; set byte to 1 if equal
+; after cmp operation, we can set eax to bool value according
+; to the flags
+(define (emit-eax-0/1->bool)
   (emit "   movzbl %al, %eax") ; movzbl set eax high-order 24bits to zero
   (emit "   sal $~s, %al" boolshift)  ; transform the result to bool
   (emit "   or $~s, %al" bool-f))

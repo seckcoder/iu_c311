@@ -116,4 +116,26 @@
 
 (foo (1 2))
 
+
+; transform a pair to hash
+(define-syntax gen-pairs
+  (syntax-rules ()
+    [(_)
+     (list)]
+    [(_ (op0 p* ...) pair* ...)
+     (cons
+       (cons `op0 (lambda ()
+                    p* ...))
+       (gen-pairs pair* ...))]))
+
+(define-syntax biop-emit-pairs
+  (syntax-rules ()
+    [(_ p0 p* ...)
+     (make-hasheq
+       (gen-pairs p0 p* ...))]))
+
+(biop-emit-pairs
+  [* (display "*")]
+  [- (display "-")])
+
 ; syntax-case...
