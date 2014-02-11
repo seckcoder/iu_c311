@@ -15,7 +15,7 @@
     (close-output-port p)))
 
 (define (build)
-  (unless (system "gcc -m32 -O1 -o stst startup.c stst.s")
+  (unless (system "gcc -O1 -o stst startup.c stst.s")
     (error 'make "could not build target")))
 
 (define (execute)
@@ -128,7 +128,14 @@
      (error 'test "output mismatch for test ~s, expected ~s, got ~s"
         test-id expected-output (get-string))))
 
+(define (print-list lst)
+  (for-each
+    (lambda (v)
+      (printf "~a\n" v))
+    lst))
+
 (define (emit . args)
+  ;(print-list args)(newline)
   (apply fprintf (compile-port) args)
   (newline (compile-port)))
 
