@@ -1,4 +1,4 @@
-#|(add-tests-with-string-output "fx<"
+(add-tests-with-string-output "fx<"
   [(fx< 12 13) => "#t\n"]
   [(fx< 12 12) => "#f\n"]
   [(fx< 13 12) => "#f\n"]
@@ -8,7 +8,7 @@
   [(fx< (fx+ 13 1) 16) => "#t\n"]
   [(fx< (fx+ 13 3) 16) => "#f\n"]
   [(fx< (fx+ 13 13) 16) => "#f\n"]
-)|#
+)
 
 (add-tests-with-string-output "fx<="
   [(fx<= 12 13) => "#t\n"]

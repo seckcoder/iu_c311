@@ -54,18 +54,20 @@
     ))
 
 
+(require racket/match
+         (prefix-in env: "env.rkt"))
+
 (define (compile-program x)
   (emit "   .text")
   (emit "   .globl	scheme_entry")
   (emit "   .type scheme_entry, @function")
   (emit "scheme_entry:")
-  (emit "   movl %esp, %ecx") ; store os' esp in ecx
+  (emit "   movl %esp, %ecx") ; store os' esp in ecx, ecx is used as temporary
   (emit "   movl 4(%esp), %esp") ; store stack address in %esp
-  ((emit-exp (- wordsize)) x)
-  (emit "   movl %ecx, %esp") ; recover os' esp
+  (emit "   pushl %ecx") ; store os'esp on stack
+  ((emit-exp (- wordsize) (env:empty)) x)
+  (emit "   popl %esp") ; recover os'esp
   (emit "   ret"))
-
-(require racket/match)
 
 (define (unop? op)
   (memq op '(add1 $fxadd1 sub1 $fxsub1
@@ -84,7 +86,7 @@
                >= fx>=)))
 
 (define emit-exp
-  (lambda (si)
+  (lambda (si env)
     (define (emit-unop op v)
       (emit-exp1 v)
       (match op
@@ -136,14 +138,14 @@
         (emit-exp1 a)
         (emit-remove-fxtag) ; remove fxtag so that it can be used in imull
         (emit "  movl %eax, ~s(%esp)" si)
-        ((emit-exp (- si wordsize)) b)
+        ((emit-exp (- si wordsize) env) b)
         (emit-remove-fxtag)
         (emit "  imull ~s(%esp), %eax" si) ; multiply two number
         (emit-add-fxtag))
       (define (emit-biv)
         (emit-exp1 a)
         (emit "   movl %eax, ~s(%esp)" si); store a to stack
-        ((emit-exp (- si wordsize)) b))
+        ((emit-exp (- si wordsize) env) b))
       (define-syntax gen-pairs
         (syntax-rules ()
           [(_)
@@ -181,8 +183,10 @@
              (emit "   addl ~s(%esp), %eax" si)]
           [fx+ (emit-exp1 `(+ ,a ,b))]
           [- (emit-biv) 
-             ; b = a + b
-             (emit "   addl ~s(%esp), %eax" si)]
+             ; b = a - b
+             (emit "   movl %eax, %ecx")
+             (emit "   movl ~s(%esp), %eax" si)
+             (emit "   subl %ecx, %eax")]
           [fx- (emit-exp1 `(- ,a ,b))]
           [= (emit-cmp '=)]
           [fx= (emit-exp1 `(= ,a ,b))]
@@ -207,6 +211,10 @@
                (? char? x)
                (? null? x))
            (emit "   movl $~s, %eax" (immediate-rep x))]
+          [(? symbol? v)
+           ; variable
+           (let ([pos (env:app env v)])
+             (emit "  movl ~s(%esp), %eax" pos))]
           [(list (? unop? op) v)
            (emit-unop op v)]
           [(list (? biop? op) a b)
@@ -224,8 +232,29 @@
               (emit "~s:" else-lbl)
               (emit-exp1 else)
               (emit "~s:" endif-lbl))]
+          [`(let ((,v* ,e*) ...) ,body)
+            (match (emit-decl* si env v* e*)
+              [(list si env)
+               ((emit-exp (- si wordsize)
+                          env)
+                body)])]
           )))
     emit-exp1))
+
+(define (emit-decl si env v e)
+  ((emit-exp si env) e)
+  (emit "   movl %eax, ~s(%esp)" si)
+  (list (- si wordsize)
+        (env:ext env v si)))
+
+(define (emit-decl* si env vs es)
+  (foldl
+    (match-lambda*
+      [(list v e (list si env))
+       (emit-decl si env v e)])
+    (list si env)
+    vs
+    es))
 
 (define (emit-remove-fxtag)
   (emit "   sar $~s, %eax" fxshift))
@@ -249,4 +278,5 @@
 
 ; (load "tests-1.3-req1.scm")
 ; (load "tests-1.4-req.scm")
-(load "tests-1.5-req1.scm")
+; (load "tests-1.5-req1.scm")
+(load "tests-1.6-req.scm")
