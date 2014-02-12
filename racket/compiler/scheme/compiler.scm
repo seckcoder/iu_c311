@@ -150,8 +150,9 @@
            (list)]
           [(_ (op0 p* ...) pair* ...)
            (cons
-             (cons `op0 (lambda ()
-                          p* ...))
+             (cons `op0
+                   (lambda ()
+                     p* ...))
              (gen-pairs pair* ...))]))
       (define-syntax biop-emit-pairs
         (syntax-rules ()
@@ -160,6 +161,7 @@
              (gen-pairs p0 p* ...))]))
       (define (emit-cmp op)
         (emit-biv)
+        ;(printf "emit-cmp:~s\n" op)
         (emit "  cmpl ~s(%esp), %eax" si)
         (case op
           ['= (emit "   sete %al")]
@@ -168,6 +170,7 @@
           ['> (emit "   setl %al")]
           ['>= (emit "  setle %al")]
           [else (report-not-found)])
+        ;(printf "end of emit-cmp\n")
         (emit-eax-0/1->bool))
       (define op->emitter
         (biop-emit-pairs
@@ -181,21 +184,21 @@
              ; b = a + b
              (emit "   addl ~s(%esp), %eax" si)]
           [fx- (emit-exp1 `(- ,a ,b))]
-          [= (emit-cmp =)]
+          [= (emit-cmp '=)]
           [fx= (emit-exp1 `(= ,a ,b))]
           [< (emit-cmp '<)]
-          [fx< (emit-exp `(< ,a ,b))]
+          [fx< (emit-exp1 `(< ,a ,b))]
           [<= (emit-cmp '<=)]
           [fx<= (emit-exp1 `(<= ,a ,b))]
           [> (emit-cmp '>)]
           [fx> (emit-exp1 `(> ,a ,b))]
           [>= (emit-cmp '>=)]
-          [fx>= (emit-exp1 '(>= ,a ,b))]
+          [fx>= (emit-exp1 `(>= ,a ,b))]
           ))
       (define (report-not-found)
-        (lambda ()
-          (error 'emit-biop "~s is not a binary operator" op)))
-      (hash-ref op->emitter op report-not-found))
+        (error 'emit-biop "~a is not a binary operator" op))
+      ;(printf "emit-op ~a ~a\n" op (hash-ref op->emitter op))
+      ((hash-ref op->emitter op report-not-found)))
     (define emit-exp1
       (lambda (exp)
         (match exp
@@ -205,7 +208,7 @@
                (? null? x))
            (emit "   movl $~s, %eax" (immediate-rep x))]
           [(list (? unop? op) v)
-           (emit-unop op)]
+           (emit-unop op v)]
           [(list (? biop? op) a b)
            (emit-biop op a b)]
           [`(if ,test ,then ,else)
