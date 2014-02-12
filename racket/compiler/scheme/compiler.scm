@@ -233,11 +233,14 @@
               (emit-exp1 else)
               (emit "~s:" endif-lbl))]
           [`(let ((,v* ,e*) ...) ,body)
+            (match (emit-decls si env v* e*)
+              [(list si env)
+               ((emit-exp si env)
+                body)])]
+          [`(let* ((,v* ,e*) ...) ,body)
             (match (emit-decl* si env v* e*)
               [(list si env)
-               ((emit-exp (- si wordsize)
-                          env)
-                body)])]
+               ((emit-exp si env) body)])]
           )))
     emit-exp1))
 
@@ -247,6 +250,30 @@
   (list (- si wordsize)
         (env:ext env v si)))
 
+; for let
+(define (emit-decls si env vs es)
+  (let loop [(si si)
+             (cur-vs vs)
+             (cur-es es)
+             (si-acc '())]
+    (cond
+      [(and (null? cur-vs)
+            (null? cur-es))
+       (list si
+             (env:exts env vs (reverse si-acc)))]
+      [(or (null? cur-vs)
+           (null? cur-es))
+       (error 'emit-decls "vs and es have different length")]
+      [else
+        ((emit-exp si env) (car cur-es))
+        (emit "   movl %eax, ~s(%esp)" si)
+        (loop (- si wordsize)
+              (cdr cur-vs)
+              (cdr cur-es)
+              (cons si si-acc))])))
+  
+
+; for let*
 (define (emit-decl* si env vs es)
   (foldl
     (match-lambda*
@@ -280,3 +307,4 @@
 ; (load "tests-1.4-req.scm")
 ; (load "tests-1.5-req1.scm")
 (load "tests-1.6-req.scm")
+(load "tests-1.6-opt.scm")
