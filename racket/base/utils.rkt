@@ -40,6 +40,7 @@
          ref?
          set-ref-v!
          ref-v
+         ~>
          )
 
 (define anything?
@@ -275,6 +276,9 @@
 (struct None () #:transparent)
 (struct ref (v) #:mutable #:transparent)
 
+(define (~> v f . rest)
+  ((apply compose1 (reverse (cons f rest))) v))
+
 (module+ test
   ; test without check
   ((combine (lambda (v) v)
@@ -294,6 +298,7 @@
 
 (module+ test
   (require rackunit)
+  ; group
   (check-equal? (group '(1 2 3 4) 2)
                 '((1 2)
                   (3 4)))
@@ -309,4 +314,11 @@
          (split-at lst 3))]
       )
     '((1) (2 3 4) (5) (6 7 8) (9)))
+
+  (check-equal?
+    (~> 3
+        (lambda (v) (* v v))
+        (lambda (v)
+          (- v 3)))
+    6)
   )
