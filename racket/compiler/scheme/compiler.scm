@@ -1,5 +1,6 @@
 (load "tests-driver.scm")
 
+
 ;(load "tests-1.1-req.scm")
 
 ; 1.2
@@ -18,6 +19,20 @@
 (define boolmask #x3F)
 (define booltag #x2F)
 (define wordsize 4) ; 4byte
+
+(define registers
+  '((eax . scratch)
+    (ebx . preserve)
+    (ecx . scratch)
+    (edx . scratch)
+    (esi . preserve)
+    (edi . preserve)
+    (ebp . preserve)
+    (esp . preserve)))
+
+(define (scratch? reg)
+  (and (pair? reg)
+       (eq? (cdr reg) 'scratch)))
 
 ; Data representation:
 ; Integer: ....00
@@ -53,30 +68,68 @@
      null_v]
     ))
 
-
 (require racket/match
          (prefix-in env: "env.rkt"))
 
 (define (compile-program x)
   (emit "   .text")
-  (emit "   .globl	scheme_entry")
-  (emit "   .type scheme_entry, @function")
-  (emit "scheme_entry:")
-  (emit "   movl %esp, %ecx") ; store os' esp in ecx, ecx is used as temporary
-  (emit "   movl 4(%esp), %esp") ; store stack address in %esp
-  (emit "   pushl %ecx") ; store os'esp on stack
+  (emit-fn-header 'scheme_entry)
+  (emit-preserve-reg)
+  (emit "   movl %esp, %ecx") ; store esp temporarily
+  (emit "   movl 12(%ecx), %ebp") ; set heap pointer
+  (emit "   movl 8(%ecx), %esp") ; set stack pointer
+  (emit "   pushl 4(%ecx)") ; store ctx
   ((emit-exp (- wordsize) (env:empty)) x)
-  (emit "   popl %esp") ; recover os'esp
+  (emit-restore-reg)
   (emit "   ret"))
 
-(define (unop? op)
-  (memq op '(add1 $fxadd1 sub1 $fxsub1
-                  number->char char->number fixnum?
-                  number? char? null? boolean? not
-                  zero?)))
+(define (emit-preserve-reg)
+    (define (si-of-i i)
+      (* wordsize i))
+  (emit "   movl 4(%esp), %ecx") ; ctx ptr
+  (let loop ([regs registers]
+             [i 0])
+    (cond [(null? regs)
+           'ok]
+          [(scratch? (car regs))
+           (loop (cdr regs)
+                 (add1 i))]
+          [else
+            (match (car regs)
+              [(cons n _)
+               (emit "   movl %~a, ~a(%ecx)" n (si-of-i i))
+               (loop (cdr regs)
+                     (add1 i))])])))
 
-(define (biop? op)
-  (memq op '(+ fx+
+(define (emit-restore-reg)
+    (define (si-of-i i)
+      (* wordsize i))
+  (emit "   popl %ecx") ; get ctx ptr
+  (let loop ([regs registers]
+             [i 0])
+    (cond [(null? regs)
+           'ok]
+          [(scratch? (car regs))
+           (loop (cdr regs)
+                 (add1 i))]
+          [else
+            (match (car regs)
+              [(cons n _)
+               (emit "  movl ~a(%ecx), %~a" (si-of-i i) n)
+               (loop (cdr regs)
+                     (add1 i))])])))
+
+(define (emit-fn-header lbl)
+  (emit "   .globl ~a" lbl)
+  (emit " .type ~a, @function" lbl)
+  (emit "~a:" lbl))
+
+(define (unop? op) (memq op '(add1 $fxadd1 sub1 $fxsub1
+                                   number->char char->number
+                                   fixnum?  number? char? null?
+                                   boolean? not zero?)))
+
+(define (biop? op) (memq op '(+ fx+
                - fx-
                * fx*
                = fx=
@@ -203,6 +256,14 @@
         (error 'emit-biop "~a is not a binary operator" op))
       ;(printf "emit-op ~a ~a\n" op (hash-ref op->emitter op))
       ((hash-ref op->emitter op report-not-found)))
+    (define (emit-rands rands)
+      ; A simple impl, I will update it
+      (foldl
+        (lambda (exp si)
+          ((emit-exp si env) exp)
+          (- si wordsize))
+        si
+        (reverse rands)))
     (define emit-exp1
       (lambda (exp)
         (match exp
@@ -241,9 +302,45 @@
             (match (emit-decl* si env v* e*)
               [(list si env)
                ((emit-exp si env) body)])]
+          [`(letrec ((,n* ,lambda*) ,body))
+            (let* ([len (length n*)]
+                   [l* (mapn (lambda (_)
+                               (gen-label))
+                             len)]
+                   [env (env:exts env n* l*)]
+                   )
+              (for-each
+                (lambda (l lambda-e)
+                  ((emit-exp1 lambda-e) l))
+                l*
+                lambda*)
+              (emit-exp1 body))]
+          [`(lambda (v* ...) ,body)
+            (lambda (l)
+              (emit-fn-header l)
+              (let* ([v-len (length v*)]
+                     [si-of-v (lambda (i)
+                                ; we have ret address above %esp
+                                (+ i 1))]
+                     [new-env
+                       (let loop ([v* v*]
+                                  [i 0]
+                                  [env env])
+                         (cond
+                           [(>= i v-len) env]
+                           [else
+                             (loop (cdr v*)
+                                   (add1 i)
+                                   (env:ext env (car v*) (si-of-v i)))]))])
+                (emit-exp1 body)))]
+          [`(,rator ,rand* ...)
+            (let ([rator-lbl (env:app env rator)])
+              (let ([new-si (emit-rands rand*)])
+                (emit "   call ~a" rator-lbl)))]
           )))
     emit-exp1))
 
+; eval(e) could be an address or label
 (define (emit-decl si env v e)
   ((emit-exp si env) e)
   (emit "   movl %eax, ~s(%esp)" si)

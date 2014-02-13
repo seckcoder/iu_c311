@@ -19,6 +19,18 @@
 
 typedef unsigned int ptr;
 
+// used to store temporary register value
+typedef struct {
+  void* eax; /* 0 scratch */
+  void* ebx; /* 4 preserve */
+  void* ecx; /* 8 scratch */
+  void* edx; /* 12 scratch */
+  void* esi; /* 16 preserve */
+  void* edi; /*20 preserve*/
+  void* ebp; /*24 preserve*/
+  void* esp; /*28 preserve*/
+} context;
+
 int is_fixnum(ptr x) {
   return (x & fxmask) == fx_tag;
 }
@@ -97,9 +109,15 @@ static void deallocate_protected_space(char* p, int size) {
 int scheme_entry();
 int main(int argc, char** argv) {
   int stack_size = 16 * 4096; // 16K byte
+  int heap_size = (4 * 16 * 4096);
   char* stack_top = allocate_protected_space(stack_size);
-  char *stack_base = stack_top + stack_size;
-  print_ptr(scheme_entry(stack_base));
+  char* stack_base = stack_top + stack_size;
+  char* heap_top = allocate_protected_space(heap_size);
+  char* heap_base = heap_top + heap_size;
+
+  context ctx;
+  print_ptr(scheme_entry(&ctx, stack_base, heap_base));
   deallocate_protected_space(stack_top, stack_size);
+  deallocate_protected_space(heap_top, heap_size);
   return 0;
 }
