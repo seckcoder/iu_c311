@@ -4,32 +4,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
-
-#define fxshift 2
-#define fxmask 0x03
-#define bool_f 0x2F
-#define bool_t 0x6F
-#define null_v 0x3F
-#define wordsize 4
-#define fx_tag 0x00
-#define char_tag 0x0F
-#define charmask 0xFF
-#define charshift 8
-
-typedef unsigned int ptr;
-
-// used to store temporary register value
-typedef struct {
-  void* eax; /* 0 scratch */
-  void* ebx; /* 4 preserve */
-  void* ecx; /* 8 scratch */
-  void* edx; /* 12 scratch */
-  void* esi; /* 16 preserve */
-  void* edi; /*20 preserve*/
-  void* ebp; /*24 preserve*/
-  void* esp; /*28 preserve*/
-} context;
+#include "startup.h"
 
 int is_fixnum(ptr x) {
   return (x & fxmask) == fx_tag;
@@ -40,6 +15,7 @@ int is_char(ptr x) {
 }
 
 int to_fixnum(ptr x) {
+  /*printf("%u\n", x);*/
   return ((int)x) >> fxshift;
 }
 
@@ -63,20 +39,64 @@ char* beautify(char c) {
   }
 }
 
-void print_ptr(ptr x) {
+int is_null(ptr x) {
+  return x == null_v;
+}
+
+int is_pair(ptr x) {
+  return (x & pairmask) == pair_tag;
+}
+
+int is_list(ptr x) {
+  return (is_pair(x) | is_null(x));
+}
+
+pair* to_pair(ptr x) {
+  return (pair*)(x - pair_tag);
+}
+
+void print_null() {
+  printf("()");
+}
+
+void print_ptr_rec(ptr x);
+void print_pair(ptr x) {
+  pair* p = to_pair(x);
+  print_ptr_rec(p->car);
+  if (is_pair(p->cdr)) {
+    printf(" ");
+    print_pair(p->cdr);
+  } else if (is_null(p->cdr)) {
+    /*pass*/
+  } else {
+    printf(" . ");
+    print_ptr_rec(p->cdr);
+  }
+}
+
+void print_ptr_rec(ptr x) {
+  /*printf("%u\n", x);*/
   if (is_fixnum(x)) {
     printf("%d", to_fixnum(x));
   } else if (x == bool_f) {
     printf("#f");
   } else if (x == bool_t) {
     printf("#t");
-  } else if (x == null_v) {
-    printf("()");
+  } else if (is_null(x)) {
+    print_null();
   } else if (is_char(x)) {
     printf("%s", beautify(to_char(x)));
+  } else if (is_pair(x)) {
+    printf("(");
+    print_pair(x);
+    printf(")");
   } else {
     printf("#<unknown 0x%08x>", x);
   }
+}
+
+void print_ptr(ptr x) {
+  print_ptr_rec(x);
   printf("\n");
 }
 
@@ -110,14 +130,15 @@ int scheme_entry();
 int main(int argc, char** argv) {
   int stack_size = 16 * 4096; // 16K byte
   int heap_size = (4 * 16 * 4096);
-  char* stack_top = allocate_protected_space(stack_size);
-  char* stack_base = stack_top + stack_size;
-  char* heap_top = allocate_protected_space(heap_size);
-  char* heap_base = heap_top + heap_size;
+  char* stack_base = allocate_protected_space(stack_size);
+  char* stack_top = stack_base + stack_size;
+  char* heap_base = allocate_protected_space(heap_size);
+  char* heap_top = heap_base + heap_size;
 
+  /*printf("heap base:%u\n", (unsigned int)heap_base);*/
   context ctx;
-  print_ptr(scheme_entry(&ctx, stack_base, heap_base));
-  deallocate_protected_space(stack_top, stack_size);
-  deallocate_protected_space(heap_top, heap_size);
+  print_ptr(scheme_entry(&ctx, stack_top, heap_base));
+  deallocate_protected_space(stack_base, stack_size);
+  deallocate_protected_space(heap_base, heap_size);
   return 0;
 }

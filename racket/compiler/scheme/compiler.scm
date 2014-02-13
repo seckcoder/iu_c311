@@ -19,6 +19,19 @@
 (define boolmask #x3F)
 (define booltag #x2F)
 (define wordsize 4) ; 4byte
+(define pairmask #x03)
+(define pairtag #x01)
+(define cljmask #x03)
+(define cljtag #x02)
+(define symmask #x03)
+(define symtag #x03)
+(define vecmask #x03)
+(define vectag #x05)
+(define strmask #x03)
+(define strtag #x06)
+; for other immediate and objects
+#|(define objmask #x03)
+(define objtag #x07)|#
 
 (define registers
   '((eax . scratch)
@@ -66,6 +79,8 @@
     [(and (list? x)
           (null? x))
      null_v]
+    [else
+      (error 'immediate-rep "~a is not an immediate" x)]
     ))
 
 (require racket/match
@@ -76,9 +91,15 @@
   (emit-fn-header 'scheme_entry)
   (emit-preserve-reg)
   (emit "   movl %esp, %ecx") ; store esp temporarily
+  ; heap : low->high
+  ; stack : high->low
   (emit "   movl 12(%ecx), %ebp") ; set heap pointer
   (emit "   movl 8(%ecx), %esp") ; set stack pointer
   (emit "   pushl 4(%ecx)") ; store ctx
+  ; It's an assumption that physical addresses on Intel's
+  ; 32bit processors have 8-byte boundaries. So we don't
+  ; need to aligh the heap address when start.
+  ;(emit-align-heap) ; aligh the start address of heap
   ((emit-exp (- wordsize) (env:empty)) x)
   (emit-restore-reg)
   (emit "   ret"))
@@ -121,22 +142,27 @@
 
 (define (emit-fn-header lbl)
   (emit "   .globl ~a" lbl)
-  (emit " .type ~a, @function" lbl)
+  (emit "   .type ~a, @function" lbl)
   (emit "~a:" lbl))
 
 (define (unop? op) (memq op '(add1 $fxadd1 sub1 $fxsub1
                                    number->char char->number
                                    fixnum?  number? char? null?
-                                   boolean? not zero?)))
+                                   boolean? not zero?
+                                   car cdr pair?
+                                   )))
 
-(define (biop? op) (memq op '(+ fx+
-               - fx-
-               * fx*
-               = fx=
-               < fx<
-               <= fx<=
-               > fx>
-               >= fx>=)))
+(define (biop? op)
+  (memq op '(cons
+              + fx+
+              - fx-
+              * fx*
+              = fx=
+              < fx<
+              <= fx<=
+              > fx>
+              >= fx>=
+              )))
 
 (define emit-exp
   (lambda (si env)
@@ -183,6 +209,15 @@
          (emit-eax-0/1->bool)]
         ['zero?
          (emit "   cmpl $~s, %eax" (immediate-rep 0))
+         (emit "   sete %al")
+         (emit-eax-0/1->bool)]
+        ['car
+         (emit "   movl -1(%eax), %eax")]
+        ['cdr
+         (emit "   movl ~s(%eax), %eax" (sub1 wordsize))]
+        ['pair?
+         (emit "   andb $~s, %al" pairmask)
+         (emit "   cmpb $~s, %al" pairtag)
          (emit "   sete %al")
          (emit-eax-0/1->bool)]
         [_ (error 'emit-unop "~a is not an unary operator" op)]))
@@ -251,6 +286,15 @@
           [fx> (emit-exp1 `(> ,a ,b))]
           [>= (emit-cmp '>=)]
           [fx>= (emit-exp1 `(>= ,a ,b))]
+          [cons (emit-biv)
+                (emit "   movl %eax, ~s(%ebp)" wordsize) ; copy b to heap
+                (emit "   movl ~s(%esp), %ecx" si) ; copy a to temporary
+                (emit "   movl %ecx, (%ebp)") ; copy a to heap
+                (emit "   movl %ebp, %eax")
+                (emit "   orl $~s, %eax" pairtag)
+                (emit "   addl $~s, %ebp" (* 2 wordsize))
+                ; baseptr + 2 * wordsize is 8-byte aligned.
+                ]
           ))
       (define (report-not-found)
         (error 'emit-biop "~a is not a binary operator" op))
@@ -403,5 +447,8 @@
 ; (load "tests-1.3-req1.scm")
 ; (load "tests-1.4-req.scm")
 ; (load "tests-1.5-req1.scm")
-(load "tests-1.6-req.scm")
-(load "tests-1.6-opt.scm")
+; (load "tests-1.6-req.scm")
+; (load "tests-1.6-opt.scm")
+
+(load "tests-1.8-opt.scm")
+
