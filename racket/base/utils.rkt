@@ -276,6 +276,7 @@
 (struct None () #:transparent)
 (struct ref (v) #:mutable #:transparent)
 
+; like Clojure's ->
 (define (~> v f . rest)
   ((apply compose1 (reverse (cons f rest))) v))
 

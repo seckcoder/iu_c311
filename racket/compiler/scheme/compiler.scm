@@ -83,10 +83,205 @@
       (error 'immediate-rep "~a is not an immediate" x)]
     ))
 
+(define (unop? op) (memq op '(add1 $fxadd1 sub1 $fxsub1
+                                   number->char char->number
+                                   fixnum?  number? char? null?
+                                   boolean? not zero?
+                                   car cdr pair?
+                                   )))
+
+(define (biop? op)
+  (memq op '(cons
+              + fx+
+              - fx-
+              * fx*
+              = fx=
+              < fx<
+              <= fx<=
+              > fx>
+              >= fx>=
+              )))
+
+
+
 (require racket/match
-         (prefix-in env: "env.rkt"))
+         (prefix-in env: "env.rkt")
+         "../../base/utils.rkt")
 
 (define (compile-program x)
+  (~> x
+      parse
+      (lambda (e)
+        (closure-conversion e 'topdown))
+      emit-program))
+
+(define (parse x)
+  (match x
+    [`(let* ([,v0 ,e0]
+             bind* ...) ,body)
+      `(let ([,v0 ,e0])
+         (parse `(let* ,bind* ,body)))]
+    [(? immediate?) x]
+    [(? symbol?) x]
+    [(list (? unop? op) _) x]
+    [(list (? biop? op) _ _) x]
+    [`(if ,test ,then ,else) x]
+    [`(let ([,v* ,e*] ...) ,body) x]
+    [`(lambda (,v* ...) ,body) x]
+    [`(,rator ,rand* ...)
+      `(app ,rator ,@rand*)]
+    [_ (error 'parse "failed:~s" x)]))
+
+(define free
+  (lambda (e)
+    (match e
+      [(? immediate?)
+       (seteq)]
+      [(? symbol? v)
+       (seteq v)]
+      [(list (? unop? op) v)
+       (free v)]
+      [(list (? biop? op) a b)
+       (free-U (list a b))]
+      [`(if ,test ,then ,else)
+        (free-U (list test then else))]
+      [`(let ((,v* ,e*) ...) ,body)
+        (set-union (free-U e*)
+                   (set-subtract (free body)
+                                 (list->seteq v*)))]
+      [`(lambda (,v* ...) ,body)
+        (set-subtract (free body)
+                      (list->seteq v*))]
+      [`(closure ,f ,env)
+        (list->seteq (hash-keys env))]
+      [`(app ,rator ,rand* ...)
+        (free-U (cons rator rand*))]
+      [`(app-clj ,rator ,rand* ...)
+        (free-U (cons rator rand*))]
+      [_ (error 'free "~a not match" e)]
+      )))
+(define free-U
+  (lambda (es)
+    (foldl
+      (lambda (e u)
+        (set-union u (free e)))
+      (seteq)
+      es)))
+(define subst
+  (lambda (e env fvs)
+    (define (subst-clj-env clj-env)
+      (let loop ([fvs (hash-keys clj-env)]
+                 [clj-env clj-env])
+        (cond
+          [(null? fvs) clj-env]
+          [else
+            (loop (cdr fvs)
+                  (hash-set clj-env
+                            (car fvs)
+                            ; subst env value
+                            (subst1 (car fvs))))])))
+    (define (subst1 e)
+      (match e
+        [(? immediate?) e]
+        [(? symbol? v)
+         (if (set-member? fvs v)
+           `(env-ref ,env ,v)
+           v)]
+        [(list (? unop? op) v)
+         `(,op ,(subst1 v))]
+        [(list (? biop? op) a b)
+         `(,op ,(subst1 a)
+               ,(subst1 b))]
+        [`(if ,test ,then ,else)
+          `(if ,(subst1 test)
+             ,(subst1 then)
+             ,(subst1 else))]
+        [`(let ((,v* ,e*) ...) ,body)
+          `(let ,(map list v* (map subst1 e*))
+             ,(subst body env (set-subtract fvs
+                                            (list->seteq v*))))]
+        [`(lambda (,v* ...) ,body)
+          `(lambda ,v*
+             ,(subst body env (set-subtract fvs
+                                            (list->seteq v*))))]
+        [`(closure ,f ,clj-env)
+          `(closure ,(subst1 f)
+                    ,(subst-clj-env clj-env))]
+        [`(lambda* (,v* ...) ,body)
+          ; lambda* means it's already substituted
+          e]
+        [`(app ,rator ,rand* ...)
+          `(app ,(subst1 rator) ,@(map subst1 rand*))]
+        [`(app-clj ,rator ,rand* ...)
+          `(app-clj ,(subst1 rator)
+                    ,@(map subst1 rand*))]
+        [_ (error 'subst "~a not match" e)]
+        ))
+    (subst1 e)))
+
+
+; (load "test-closure-conversion.scm")
+
+(define (env-from-fvs fvs)
+  (make-immutable-hasheq
+    (map
+      (lambda (x)
+        (cons x x))
+      (set->list fvs))))
+
+(define (closure-conversion e dir)
+  (letrec ([cvt1 (lambda (e)
+                   (match e
+                     [`(lambda (,v* ...) ,body)
+                       (let ([fvs (free e)]
+                             [$env (gensym 'env)])
+                         `(closure
+                            (lambda* (,$env ,@v*)
+                                     ,(subst body $env fvs))
+                            ,(env-from-fvs fvs)))]
+                     [`(app ,rator ,rand* ...)
+                       `(app-clj ,rator ,@rand*)]
+                     [_ e]
+                     ))]
+           [cvt-up (lambda (e)
+                     (define (cvt-up1 e)
+                       (match e
+                         [(? immediate?)
+                          e]
+                         [(? symbol?)
+                          e]
+                         [(list (? unop? op) v)
+                          `(,op ,(cvt-up v))]
+                         [(list (? biop? op) a b)
+                          `(,op ,(cvt-up a)
+                                ,(cvt-up b))]
+                         [`(if ,test ,then ,else)
+                           `(if ,(cvt-up test)
+                              ,(cvt-up then)
+                              ,(cvt-up else))]
+                         [`(let ((,v* ,e*) ...) ,body)
+                           `(let ,(map list v* (map cvt-up e*))
+                              ,(cvt-up body))]
+                         [`(lambda (,v* ...) ,body)
+                           `(lambda ,v*
+                              ,(cvt-up body))]
+                         [`(app ,rator ,rand* ...)
+                           (let ([rator (cvt-up rator)]
+                                 [rand* (map cvt-up rand*)])
+                             `(app ,rator ,@rand*))]
+                         [_ (error 'cvt-up "~a not match" e)]
+                         ))
+                     (cvt1 (cvt-up1 e)))]
+           [cvt-down (lambda (e) e)]
+           [cvt (lambda (e)
+                  (if (eq? dir 'topdown)
+                    (cvt1 (cvt-down e))
+                    (cvt-up e)))])
+           (cvt e)))
+
+; (load "test-closure-conversion.scm")
+
+(define (emit-program x)
   (emit "   .text")
   (emit-fn-header 'scheme_entry)
   (emit-preserve-reg)
@@ -103,10 +298,9 @@
   ((emit-exp (- wordsize) (env:empty)) x)
   (emit-restore-reg)
   (emit "   ret"))
-
 (define (emit-preserve-reg)
-    (define (si-of-i i)
-      (* wordsize i))
+  (define (si-of-i i)
+    (* wordsize i))
   (emit "   movl 4(%esp), %ecx") ; ctx ptr
   (let loop ([regs registers]
              [i 0])
@@ -123,8 +317,8 @@
                      (add1 i))])])))
 
 (define (emit-restore-reg)
-    (define (si-of-i i)
-      (* wordsize i))
+  (define (si-of-i i)
+    (* wordsize i))
   (emit "   popl %ecx") ; get ctx ptr
   (let loop ([regs registers]
              [i 0])
@@ -144,25 +338,6 @@
   (emit "   .globl ~a" lbl)
   (emit "   .type ~a, @function" lbl)
   (emit "~a:" lbl))
-
-(define (unop? op) (memq op '(add1 $fxadd1 sub1 $fxsub1
-                                   number->char char->number
-                                   fixnum?  number? char? null?
-                                   boolean? not zero?
-                                   car cdr pair?
-                                   )))
-
-(define (biop? op)
-  (memq op '(cons
-              + fx+
-              - fx-
-              * fx*
-              = fx=
-              < fx<
-              <= fx<=
-              > fx>
-              >= fx>=
-              )))
 
 (define emit-exp
   (lambda (si env)
@@ -311,10 +486,7 @@
     (define emit-exp1
       (lambda (exp)
         (match exp
-          [(or (? number? x)
-               (? boolean? x)
-               (? char? x)
-               (? null? x))
+          [(? immediate? x)
            (emit "   movl $~s, %eax" (immediate-rep x))]
           [(? symbol? v)
            ; variable
@@ -342,10 +514,10 @@
               [(list si env)
                ((emit-exp si env)
                 body)])]
-          [`(let* ((,v* ,e*) ...) ,body)
-            (match (emit-decl* si env v* e*)
-              [(list si env)
-               ((emit-exp si env) body)])]
+          #|[`(let* ((,v* ,e*) ...) ,body)
+              (match (emit-decl* si env v* e*)
+                [(list si env)
+                 ((emit-exp si env) body)])]
           [`(letrec ((,n* ,lambda*) ,body))
             (let* ([len (length n*)]
                    [l* (mapn (lambda (_)
@@ -358,8 +530,8 @@
                   ((emit-exp1 lambda-e) l))
                 l*
                 lambda*)
-              (emit-exp1 body))]
-          [`(lambda (v* ...) ,body)
+              (emit-exp1 body))]|#
+          [`(lambda (,v* ...) ,body)
             (lambda (l)
               (emit-fn-header l)
               (let* ([v-len (length v*)]
@@ -412,7 +584,7 @@
               (cdr cur-vs)
               (cdr cur-es)
               (cons si si-acc))])))
-  
+
 
 ; for let*
 (define (emit-decl* si env vs es)
@@ -450,5 +622,4 @@
 ; (load "tests-1.6-req.scm")
 ; (load "tests-1.6-opt.scm")
 
-(load "tests-1.8-opt.scm")
-
+; (load "tests-1.8-opt.scm")
