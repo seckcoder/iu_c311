@@ -23,8 +23,9 @@
 (define pairtag #x01)
 (define cljmask #x03)
 (define cljtag #x02)
-(define symmask #x03)
-(define symtag #x03)
+(define atommask #x03)
+(define atomtag #x03)
+(define atomshift 3)
 (define vecmask #x03)
 (define vectag #x05)
 (define strmask #x03)
@@ -63,24 +64,25 @@
   (or (fixnum? x)
       (boolean? x)
       (char? x)
-      (null? x)))
+      (null? x)
+      (and (pair? x) (eq? (car x) 'quote))))
 
 (define (immediate-rep x)
-  (cond
-    [(fixnum? x)
+  (match x
+    [(? fixnum?)
      (arithmetic-shift x fxshift)]
-    [(boolean? x)
+    [(? boolean?)
      (if (eq? x #t)
        bool-t
        bool-f)]
-    [(char? x)
+    [(? char?)
      (+ (arithmetic-shift (char->integer x) charshift)
         chartag)]
-    [(and (list? x)
-          (null? x))
-     null_v]
-    [else
-      (error 'immediate-rep "~a is not an immediate" x)]
+    ['() null_v]
+    [`(quote ,x)
+     (+ (arithmetic-shift (symbol->string x) atomshift)
+        atomtag)]
+    [_ (error 'immediate-rep "~a is not an immediate" x)]
     ))
 
 (define (unop? op) (memq op '(add1 $fxadd1 sub1 $fxsub1
@@ -117,10 +119,14 @@
 
 (define (parse x)
   (match x
+    [`(let* () ,body)
+      (parse `(let () ,body))]
+    [`(let* ([,v0 ,e0]) ,body)
+      (parse `(let ([,v0 ,e0]) ,body))]
     [`(let* ([,v0 ,e0]
-             bind* ...) ,body)
+             ,bind* ...) ,body)
       `(let ([,v0 ,e0])
-         (parse `(let* ,bind* ,body)))]
+         ,(parse `(let* ,bind* ,body)))]
     [(? immediate?) x]
     [(? symbol?) x]
     [(list (? unop? op) _) x]
@@ -275,8 +281,8 @@
            [cvt-down (lambda (e) e)]
            [cvt (lambda (e)
                   (if (eq? dir 'topdown)
-                    (cvt1 (cvt-down e))
-                    (cvt-up e)))])
+                    (cvt-down e)
+                    (cvt1 (cvt-up e))))])
            (cvt e)))
 
 ; (load "test-closure-conversion.scm")
@@ -491,7 +497,7 @@
           [(? symbol? v)
            ; variable
            (let ([pos (env:app env v)])
-             (emit "  movl ~s(%esp), %eax" pos))]
+             (emit "   movl ~s(%esp), %eax" pos))]
           [(list (? unop? op) v)
            (emit-unop op v)]
           [(list (? biop? op) a b)
@@ -549,7 +555,7 @@
                                    (add1 i)
                                    (env:ext env (car v*) (si-of-v i)))]))])
                 (emit-exp1 body)))]
-          [`(,rator ,rand* ...)
+          [`(app ,rator ,rand* ...)
             (let ([rator-lbl (env:app env rator)])
               (let ([new-si (emit-rands rand*)])
                 (emit "   call ~a" rator-lbl)))]
@@ -616,10 +622,11 @@
   (emit "   sal $~s, %al" boolshift)  ; transform the result to bool
   (emit "   or $~s, %al" bool-f))
 
-; (load "tests-1.3-req1.scm")
-; (load "tests-1.4-req.scm")
-; (load "tests-1.5-req1.scm")
-; (load "tests-1.6-req.scm")
-; (load "tests-1.6-opt.scm")
+#|(load "tests-1.3-req1.scm")
+(load "tests-1.4-req.scm")
+(load "tests-1.5-req1.scm")
+(load "tests-1.6-req.scm")
+(load "tests-1.6-opt.scm")|#
 
 ; (load "tests-1.8-opt.scm")
+(load "tests-sexp.scm")

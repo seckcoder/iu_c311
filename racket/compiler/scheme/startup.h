@@ -11,6 +11,9 @@
 #define charshift 8
 #define pair_tag 0x01
 #define pairmask 0x03
+#define atommask 0x03
+#define atomtag 0x03
+#define atomshift 3
 
 typedef unsigned int ptr;
 

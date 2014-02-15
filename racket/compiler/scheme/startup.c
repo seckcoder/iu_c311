@@ -74,6 +74,14 @@ void print_pair(ptr x) {
   }
 }
 
+int is_atom(ptr x) {
+  return (x & atommask) == atomtag;
+}
+
+void print_atom(ptr x) {
+  ((int)x) >> atomshift
+}
+
 void print_ptr_rec(ptr x) {
   /*printf("%u\n", x);*/
   if (is_fixnum(x)) {

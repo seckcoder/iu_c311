@@ -19,7 +19,7 @@
 
 (define (app env v)
   (hash-ref env v (lambda ()
-                    (error 'app "~a not found" v))))
+                    (error 'env:app "~a not found" v))))
 
 (define (empty)
   (make-immutable-hasheq))
